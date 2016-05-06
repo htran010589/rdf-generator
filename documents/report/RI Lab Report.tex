@@ -1,0 +1,153 @@
+\documentclass{acm_proc_article-sp}
+
+\usepackage{pdfpages}
+\usepackage{cite}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
+\begin{document}
+
+\title{Advanced Data Analysis\\with Matrices and Tensors Summary:\\Simple and Deterministic Matrix Sketching}
+\numberofauthors{1}
+\author{
+\alignauthor
+Author: Edo Liberty\\Student: Hai Dang Tran\\Matriculation Number: 2557779
+}
+\date{09 January 2016}
+
+\maketitle
+
+\section*{ABSTRACT}
+This report is a summary of~\cite{ref1} which proposes a simple, deterministic and scalable matrix sketching algorithm in the streaming context. To be specific, the input of the algorithm is a matrix $A \in \mathbb{R}^{n \times m}$ in which $n$ can be very large and $A$ can be represented as a stream of row vectors $A_{i}$. The algorithm tends to find a matrix $B \in \mathbb{R}^{l \times m}$ with $l \ll n$ and $B^TB$ well approximates $A^TA$, that is, $B^TB \approx A^TA$, more formally:
+
+$\|A^TA - B^TB\| \leq 2\|A\|^2_{f} / l$
+
+However, in case $\|A\|_{f}$ is large, this bound can be very loose. This problem will be discussed in details in the last section.
+
+The order of the content in this summary is as follows. Firstly, literature review is introduced. Secondly, the main algorithm of the publication~\cite{ref1} is discussed in details. Finally, we talk about experimental results and some critical questions about this publication.\\
+
+\section{Introduction}
+
+Matrix sketching is a problem of finding a new matrix which is much smaller than the original one. Besides, with the same operation executed on the new or original matrices, the results are not much different~\cite{ref1}. Matrix sketching algorithms pay attention to streaming context where the each row vector of the original matrix is accessed at most one time.
+
+\subsection{Existing Approaches}
+
+Several approaches for matrix sketching problem are as follows. The first approach tends to find a sparse matrix from the original one. Because of the sparsity, some operations can be performed efficiently on this sketch~\cite{ref2, ref3, ref14}. In the second approach, the combination of some rows are calculated to form a new sketch matrix~\cite{ref4, ref5, ref15, ref16}. The \textit{random projection} method in the Experiments part is corresponding to above mentioned algorithms. Besides, another combination-based method with the name \textit{hashing}~\cite{ref6} will also be tested and compared with the main method. The third approach pays attention to choosing a subset of row or column vectors to create sketch matrix. Another name for this approach is Column Subset Selection Problem which attracts interest in~\cite{ref7, ref8, ref9, ref10, ref11}. In the streaming model of this approach, row sampling is conducted. Publications in~\cite{ref11, ref7, ref12, ref13, ref17} focus on bounds of sampling each row vector with the probability derived from its norm. This algorithm is also \textit{sampling} method in the Experiments part.
+
+\subsection{Frequent Items}
+
+The publication~\cite{ref1} indicates a new approach in which there is a connection between matrix sketching and item frequency problem. Before jumping to the main algorithm description in the next section, the solution for the latter is addressed here.
+
+If we are given a stream of numbers where the number domain is $m$ different values $a_{1}, a_{2}, ..., a_{m}$. Let $f_{i}$ be the frequency or number of times that $a_{i}$ appears in the stream ($\forall i \in [m]$). Our task is to sample $O(l)$ items such that $(|g_{i} - f_{i}| \leq n/l)$ ($\forall i \in [m]$) with $g_{i}$ being sample frequency of item $a_{i}$. The solution to this problem is very simple: while the number of distinct elements in the stream is greater than $l$, we remove $l$ different items. After this loop, we have at most $l$ elements which satisfy the above constraint~\cite{ref1}.
+
+The intuition from this solution can be applied to the main algorithm~\cite{ref1}, indeed, the author~\cite{ref1} proposes a method such that it periodically reduces the norms of row vectors in the sketch matrix. The details of the algorithm will be presented in the next section.
+
+\section{Frequent Directions}
+
+\subsection{Upper Bound}
+
+Algorithm \ref{algo1} is the main method of \cite{ref1} which always maintains a matrix $B \in \mathbb{R}^{l \times m}$ when a new row vector $A_{i}$ of $A \in \mathbb{R}^{n \times m}$ appears. As mentioned above, $A$ is a stream of row vectors, $n$ can be very large, thus, we cannot store $A$ in memory. The algorithm only needs to read each row vector $A_{i}$ exactly one time, in case there is a zero row vector in $B$, $A_{i}$ will be inserted to this row. Otherwise, row vector norms of $B$ will be shortened to make sure that half of them are zeroes. This step can be done by reducing singular values of B. After this, there will be at least one available zero row vector of $B$ and $A_{i}$ insertion can be conducted.
+
+\textbf{Claim 1.} $\|A^TA - B^TB\| \leq 2\|A\|^2_{f} / l$ holds true with matrix $B$ generated by Algorithm \ref{algo1}~\cite{ref1}.
+
+\begin{algorithm}
+\caption{Frequent Directions~\cite{ref1}}
+\label{algo1}
+\begin{algorithmic}
+\REQUIRE $l, A \in \mathbb{R}^{n \times m}$
+\STATE $B \leftarrow$ zero matrix $\in \mathbb{R}^{l \times m}$
+\FOR{$i \in [n]$}
+\IF{$B$ has no zero row vectors}
+\STATE $[U, \Sigma, V] \leftarrow$ SVD$(B)$
+\STATE $\delta \leftarrow \sigma^2_{l/2}$
+\STATE $\hat{\Sigma} \leftarrow \sqrt{max(\Sigma^2 - I_{l} \delta, 0)}$
+\STATE $B \leftarrow \hat{\Sigma} V^T$
+\ENDIF
+\STATE Insert $A_{i}$ into a zero row vector of $B$
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
+Intuitively, whenever $B$ is full of row vectors from the stream, it is rotated to make sure that rows from top to bottom are sorted in descending order of vector norms. This is why we do not use rotation matrix $U$ to calculate new value of $B$. After this rotation, similar idea of \textit{Frequent Items} can be applied here. That is, row vector norms of $B$ can be reduced such that the smallest norms become zeroes. As a result, the upper bound of matrix problem~\cite{ref1} is similar to that of item problem.
+
+\subsection{Scalability}
+
+\textbf{Claim 2.} Partition $A$ into two matrices $A1, A2$ such that $A =$
+$\begin{bmatrix}
+A1\\
+A2\\
+\end{bmatrix}$. Let $B1, B2$ be outputs generated by Algorithm \ref{algo1}~\cite{ref1} with $A1, A2$ being inputs, respectively. After that, $B1, B2$ are combined to form matrix $B$, that is, $B =$
+$\begin{bmatrix}
+B1\\
+B2\\
+\end{bmatrix}$. In the next step, if Algorithm \ref{algo1} is applied to find $C$ as a sketch of $B$, then $C$ is still a good sketch of $A$, that is, $\|A^TA - C^TC\| \leq 2\|A\|^2_{f} / l$~\cite{ref1}.
+
+Even if we partition $A$ into much more matrices, this upper bound still holds true. From this property, the author~\cite{ref1} proposes a parallel approach in which partition matrices of $A$, for instance, $A1, A2$ will be used as inputs to compute local sketches simultaneously in many machines. \textit{Frequent Directions} can be executed again to find the final sketch of the combination of above local sketches.
+
+With this parallel approach, the SVD computation, which is time consuming, can be conducted in many computers at the same time. Hence, this way significantly improve the run time of Algorithm~\ref{algo1}~\cite{ref1}. Overall, the performance of finding the final matrix sketch may be enhanced because of the mechanism of parallel computing.
+
+\section{Experiments}
+
+\subsection{Input Data and Competing Methods}
+
+The author~\cite{ref1} tends to compare the main algorithm with five other ones including \textit{brute force, naive} baselines and \textit{sampling}, \textit{hashing}, \textit{random projection} mentioned in Introduction part with references~\cite{ref1}. As regards \textit{brute force} algorithm~\cite{ref1}, top $l$ right singular vectors of $A^TA$ will be inserted to the final sketch, this is guaranteed to be the best in approximating $A$ in case matrix rank is $l$. Besides, the sketch matrix in \textit{naive} approach~\cite{ref1} is zero matrix and this method does nothing.
+
+There are two types of the following experiments, accuracy and performance test. In the accuracy test, all algorithms~\cite{ref1} are executed and compared in terms of an accuracy $\|A^TA - B^TB\|$ with $B$ being a sketch matrix. In the performance test, run times of all methods are measured and assessed. Since some of above methods are randomized, for each input and algorithm, five times are conducted and only median run time is recorded.
+
+\subsection{Accuracy Test}
+
+With $n = 10000, m = 1000, d = 50$ and $l$ is varied, an accuracy test is conducted and Figure \ref{fig1} (a screenshot from \cite{ref1}) illustrates the accuracy vs sketch size plot. Note that \textit{frequent directions bound}~\cite{ref1} is not a competing method, it just plots the values of $2\|A\|_{f}^2/l$. From Figure \ref{fig1}, it can be seen that, firstly, the accuracy of the main method is always better than \textit{naive} baseline~\cite{ref1}. Secondly, there is not much difference between the accuracies of \textit{sampling, hashing, random projections}~\cite{ref1}. Thirdly, the actual accuracy of the main method is much better than its worst case bound and quite close to the best accuracy of \textit{brute force} method~\cite{ref1}.
+
+%\begin{figure}[ht]
+%	\centering
+%	\includegraphics[scale=0.55]{fig1.jpg}
+%	\caption{An accuracy test with other methods, a screenshot from \cite{ref1}}
+%	\label{fig1}
+%\end{figure}
+
+\subsection{Performance Test}
+
+With $n = 10000, m = 1000$ and $l$ is varied, a performance test is executed and Figure \ref{fig2} (a screenshot from \cite{ref1}) describes the run time in seconds vs sketch size plot. This Figure shows that it takes more time with the larger values of $l$. Besides, the main method is worse than \textit{sampling} and \textit{hashing} methods in terms of performance \cite{ref1}.
+
+%\begin{figure}[ht]
+%	\centering
+%	\includegraphics[scale=0.55]{fig2.jpg}
+%	\caption{A performance test with other methods, a screenshot from \cite{ref1}}
+%	\label{fig2}
+%\end{figure}
+
+%\begin{figure}[ht]
+%	\centering
+%	\includegraphics[scale=0.47]{fig3.jpg}
+%	\caption{A performance test with other methods, a screenshot from \cite{ref1}}
+%	\label{fig3}
+%\end{figure}
+
+\section{Critical Questions and Discussion}
+In my opinion, there are some positive and negative points in~\cite{ref1} as follows, note that the minuses are stressed in questions.
+
+\subsection{Comments on Contributions}
+The scalability is a plus of the publication~\cite{ref1}, that is, output of Algorithm \ref{algo1} can be computed in parallel. However, this is not expressed clearly in the Experiments part. Indeed, only non-parallel version of the main algorithm is tested and the author~\cite{ref1} concludes that the running time of the algorithm is linear in each of $n, m, l$.
+
+\textbf{Question 1.} The performance test will be better if the author~\cite{ref1} implements parallel version for Algorithm~\ref{algo1} with massive data sets and compare with other methods. In the publication, the input matrix size for the run time test is not too large and there is no parallel implementation. If the author increases the number of rows to $10^7$ - small number in streaming context, they can not wait for the result with the current code.
+
+\subsection{Comments on Theory}
+Thanks to the nice claims above, the accuracy is guaranteed to be upper bounded by a finite scalar. This bound still holds true if the author~\cite{ref1} implements the parallel version. However, there are some questions about the bound of the method:
+
+\textbf{Question 2.} In case elements of matrix $A$ are large, $\|A\|_{f}$ can be very large and the proved bound is very loose. To lower this bound, $l$ should be increased and the condition $l \ll n$ may do not hold anymore. Besides, to show a test that the algorithm may work well, the author~\cite{ref1} chooses a way to generate synthetic data matrix with small entry values. This assures that $\|A\|_{f}$ is small and test results look good. However, if the author chooses real streaming data, the situation can be very different.
+
+\textbf{Question 3.} It makes more sense if the upper bound of $\|A^TA - B^TB\|_{f}$ is assessed rather than that of $\|A^TA - B^TB\|$ since spectral norm is just the largest singular value. To be specific, if we want to assess how well a matrix $X$ approximated zero matrix, Frobenius norm should be taken into account instead of spectral norm. Indeed, in case $X = UIV^T$ is SVD of $X$ and $I$ is an identity $10^4$-by-$10^4$ matrix; spectral, Frobenius norm of $X$ are $1$, $100$; respectively. Thus, it is hard to conclude that $X$ approximates zero matrix based on small spectral norm.
+
+\textbf{Question 4.} The main algorithm~\cite{ref1} uses SVD to calculate matrix decomposition, as discussed in the last part of the paper, SVD may lose the structure of the sparse inputs. Thus, in case there are a lot of zero values in the original data matrix, the algorithm may generate a new sketch matrix not retaining original structure patterns.
+
+\subsection{Comments on Experiments}
+Experiments~\cite{ref1} in the publication are not strong, I want to address some following questions:
+
+\textbf{Question 5.} The experiments~\cite{ref1} are conducted with synthetic or generated data, I think it should be better if the author~\cite{ref1} uses real data collected from some sources. For instance, data for stock transaction in the streaming context is a better choice for testing the algorithm. With the real data, making sure that the proposed algorithm generates output within acceptable run time with the small upper bound is challenging.
+
+\textbf{Question 6.} When Figure~\ref{fig1} is concerned, entries of generated matrix $A$ are small, and thus, the guaranteed bound is not very large. I think it will be more convinced if the author~\cite{ref1} tests a variety of data sets, at least with the case of large value entries and show that the bound is acceptable. In addition, the number $n$ tested in the Experiments part is very small compared with real streaming cases. Overall, more tests should be conducted for bigger data matrices with large elements.
+
+\bibliographystyle{abbrv}
+\bibliography{sigproc}
+
+\end{document}
