@@ -4,6 +4,7 @@
 \usepackage{cite}
 \usepackage{algorithm}
 \usepackage{algorithmic}
+\usepackage{url}
 
 \begin{document}
 
@@ -18,39 +19,62 @@ Student: Hai Dang Tran\\Matriculation Number: 2557779
 \maketitle
 
 \section{INTRODUCTION}
-This report proposes a simple predicate projection algorithm to mine interesting rules from RDF\footnote{https://en.wikipedia.org/wiki/Resource_Description_Framework} graph. To be specific, the input of the algorithm is a matrix $A \in \mathbb{R}^{n \times m}$ in which $n$ can be very large and $A$ can be represented as a stream of row vectors $A_{i}$. The algorithm tends to find a matrix $B \in \mathbb{R}^{l \times m}$ with $l \ll n$ and $B^TB$ well approximates $A^TA$, that is, $B^TB \approx A^TA$, more formally:
+This report proposes a simple predicate projection algorithm to mine interesting rules from RDF\footnote{\url{https://en.wikipedia.org/wiki/Resource_Description_Framework}} graph. To be specific, the input of the algorithm is a RDF file containing list of subject-predicate-object triples (SPO). The algorithm tends to find types of objects and then project predicate-object pair to more general ones. For example, $marriedTo(singer)$ is in a higher level and more interesting than $marriedTo(Britney)$. Besides, thanks to the projection, the frequency of predicate-object pair can be larger and easier to be explored using rule mining.
 
-$\|A^TA - B^TB\| \leq 2\|A\|^2_{f} / l$
-
-However, in case $\|A\|_{f}$ is large, this bound can be very loose. This problem will be discussed in details in the last section.
-
-The order of the content in this summary is as follows. Firstly, literature review is introduced. Secondly, the main algorithm of the publication~\cite{ref1} is discussed in details. Finally, we talk about experimental results and some critical questions about this publication.\\
+The output of the algorithm is a list of SPOs with more projected triples added. This introduces a denser RDF graph and more interesting nonmonotonic rules. Details of the main method will be described in the next section. Finally, some questions for discussion will be mentioned in the last part of the report.
 
 \section{Projection Strategy}
 
-Matrix sketching is a problem of finding a new matrix which is much smaller than the original one. Besides, with the same operation executed on the new or original matrices, the results are not much different~\cite{ref1}. Matrix sketching algorithms pay attention to streaming context where the each row vector of the original matrix is accessed at most one time.
+\subsection{Intuition}
+
+The intuition of the method is simple, that is, knowing facts about some types or categories is more interesting than specific individuals. For instance, \textit{hasDuration(short) $\leftarrow$ isMovie(comedy)} is more meaningful than \textit{hasDuration(short) $\leftarrow$ isMovie(lionKingReturns)}. Since the first one reflects a general fact, it can be applied to many other specific movie instances with the same type $comedy$. However, just using types instead of individuals is not trivial as the following examples:
+
+Firstly, \textit{Bill Gates} can be known as a person name, or a name of a movie about someone 's life story. The question is that, with a predicate, how can we choose its suitable types. The intuition is that, of all types for objects corresponding with predicate \textit{marriedTo} predicate, the ratio of \textit{person} is much larger than \textit{movieName}. Thus, we can based on ratio of predicate-type pair frequency over predicate frequency to filter category noises. That is, we just take care about a predicate-type pair if its ratio is greater than a threshold.
+
+Secondly, if we choose a too general level of abstraction, the resulting rules can be trivially true and brings no added information. To be specific, \textit{is(person) $\leftarrow$ is(singer)} is uninteresting, though it has very high confidence. In fact, \textit{person} type has high frequency and can be filtered out using another threshold. In this work, a number $k$ threshold is fixed and when we sort all predicate-type pairs in increasing order of frequency after removing noises, we just get at most top-$k$ types.
+
+The method will be presented formally in the following pseudo-code.
+
+\subsection{Predicate Projection Method}
 
 \begin{algorithm}
-\caption{Frequent Directions~\cite{ref1}}
+\caption{Predicate Projection Algorithm}
 \label{algo1}
 \begin{algorithmic}
-\REQUIRE $l, A \in \mathbb{R}^{n \times m}$
-\STATE $B \leftarrow$ zero matrix $\in \mathbb{R}^{l \times m}$
-\FOR{$i \in [n]$}
-\IF{$B$ has no zero row vectors}
-\STATE $[U, \Sigma, V] \leftarrow$ SVD$(B)$
-\STATE $\delta \leftarrow \sigma^2_{l/2}$
-\STATE $\hat{\Sigma} \leftarrow \sqrt{max(\Sigma^2 - I_{l} \delta, 0)}$
-\STATE $B \leftarrow \hat{\Sigma} V^T$
+\REQUIRE $L$ as a list of $SPO$ triples
+\STATE $R$ $\leftarrow$ empty list
+\FOR{each $SPO$ triple from $L$}
+\IF{$P$ is type predicate}
+\STATE add $O$ to the set of types for $P$
 \ENDIF
-\STATE Insert $A_{i}$ into a zero row vector of $B$
+\STATE poFrequency[PO]++
+\STATE pFrequency[P]++
 \ENDFOR
+\FOR{each $SPO$ triple from $L$}
+\FOR{each type $T$ from type set of $O$}
+\STATE ptFrequency[PT]++
+\ENDFOR
+\ENDFOR
+\FOR{each $SPO$ triple from $L$}
+\IF{poFrequency[PO] > Threshold1}
+\STATE add $SPO$ to $R$
+\ENDIF
+\FOR{each type $T$ from type set of $O$}
+\STATE ratio $\leftarrow$ ptFrequency[PT] / pFrequency[P]
+\IF{ratio > Threshold2}
+\STATE add $T$ to type list TL
+\ENDIF
+\STATE sort TL in ascending order of ptFrequency
+\STATE choose top k types and add corresponding triples to $R$
+\ENDFOR
+\ENDFOR
+\RETURN(R)
 \end{algorithmic}
 \end{algorithm}
 
 \section{Future Work}
 
-Several approaches for matrix sketching problem are as follows. The first approach tends to find a sparse matrix from the original one. Because of the sparsity, some operations can be performed efficiently on this sketch~\cite{ref2, ref3, ref14}. In the second approach, the combination of some rows are calculated to form a new sketch matrix~\cite{ref4, ref5, ref15, ref16}. The \textit{random projection} method in the Experiments part is corresponding to above mentioned algorithms. Besides, another combination-based method with the name \textit{hashing}~\cite{ref6} will also be tested and compared with the main method. The third approach pays attention to choosing a subset of row or column vectors to create sketch matrix. Another name for this approach is Column Subset Selection Problem which attracts interest in~\cite{ref7, ref8, ref9, ref10, ref11}. In the streaming model of this approach, row sampling is conducted. Publications in~\cite{ref11, ref7, ref12, ref13, ref17} focus on bounds of sampling each row vector with the probability derived from its norm. This algorithm is also \textit{sampling} method in the Experiments part.
+Several approaches for matrix sketching problem are as follows. The first approach tends to find a sparse matrix from the original one. Because of the sparsity, some operations can be performed efficiently on this sketch~\cite{ref1}.
 
 
 \bibliographystyle{abbrv}
