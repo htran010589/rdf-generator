@@ -5,6 +5,7 @@
 \usepackage{algorithm}
 \usepackage{algorithmic}
 \usepackage{url}
+\usepackage{framed}
 
 \begin{document}
 
@@ -12,32 +13,62 @@
 \numberofauthors{1}
 \author{
 \alignauthor
-Student: Hai Dang Tran\\Matriculation Number: 2557779
+Hai Dang Tran\\Matriculation Number: 2557779
 }
 \date{09 January 2016}
 
 \maketitle
 
 \section{INTRODUCTION}
-This report proposes a simple predicate projection algorithm to mine interesting rules from RDF\footnote{\url{https://en.wikipedia.org/wiki/Resource_Description_Framework}} graph. To be specific, the input of the algorithm is a RDF file containing list of subject-predicate-object triples (SPO). The algorithm tends to find types of objects and then project predicate-object pair to more general ones. For example, $marriedTo(singer)$ is in a higher level and more interesting than $marriedTo(Britney)$. Besides, thanks to the projection, the frequency of predicate-object pair can be larger and easier to be explored using rule mining.
+This report proposes a simple predicate projection algorithm to mine interesting rules from RDF\footnote{\url{https://en.wikipedia.org/wiki/Resource_Description_Framework}} graph. More specifically, the input of the algorithm is an RDF file containing list of subject-predicate-object triples ($SPO$). The algorithm tends to \textbf{select types} for objects and \textbf{project} binary predicates to abstracted unary ones. For example, $marriedToSinger()$ is in a higher level and more interesting than $marriedTo(Britney)$.
 
-The output of the algorithm is a list of SPOs with more projected triples added. This introduces a denser RDF graph and more interesting nonmonotonic rules. Details of the main method will be described in the next section. Finally, some questions for discussion will be mentioned in the last part of the report.
+The motivation for this work is that, some predicate-object pairs, such as $marriedTo(Britney)$, have low frequency in some RDF data. By contrast, the data may contain millions of facts. As a consequence, relatively infrequent predicate-object pairs have low chance to appear in the result after using rule mining. To tackle the issue, projecting objects to types is taken into account. Indeed, thanks to this, the frequency of predicate-object pairs is higher and can be easier to be explored for rule mining. Besides, rules are often intrinsically general, they should include abstract types instead of specific entities.
+
+Details of the main method are described in the next section. Finally, some questions for discussion will be mentioned in the last part of the report.
 
 \section{Projection Strategy}
 
 \subsection{Intuition}
 
-The intuition of the method is simple, that is, knowing facts about some types or categories is more interesting than specific individuals. For instance, \textit{hasDuration(short) $\leftarrow$ isMovie(comedy)} is more meaningful than \textit{hasDuration(short) $\leftarrow$ isMovie(lionKingReturns)}. Since the first one reflects a general fact, it can be applied to many other specific movie instances with the same type $comedy$. However, just using types instead of individuals is not trivial as the following examples:
+The intuition of the method is simple, that is, knowing facts about some types or categories is more interesting than specific individuals. For instance, \textit{hasDuration(short) $\leftarrow$ isMovie(comedy)} is more meaningful than \textit{hasDuration(short) $\leftarrow$ isMovie(LionKingReturns)}. Since the first one reflects a general fact, it can be applied to many other specific movie instances with the same type $comedy$. However, naively using all types of individuals has some problems as the following examples demonstrate:
 
-Firstly, \textit{Bill Gates} can be known as a person name, or a name of a movie about someone 's life story. The question is that, with a predicate, how can we choose its suitable types. The intuition is that, of all types for objects corresponding with predicate \textit{marriedTo} predicate, the ratio of \textit{person} is much larger than \textit{movieName}. Thus, we can based on ratio of predicate-type pair frequency over predicate frequency to filter category noises. That is, we just take care about a predicate-type pair if its ratio is greater than a threshold.
+Firstly, \textit{Bill Gates} can be known as a person name, or a name of a movie about the person 's life story. The question is: with a predicate-object pair, how can we choose suitable types of objects for the predicate. The intuition is that, of all types for objects corresponding with predicate \textit{marriedTo} predicate, the ratio of \textit{person} is much larger than \textit{movieName}. Thus, we can filter category noises based on ratio of predicate-type pair frequency over predicate frequency. That is, we just take care of a predicate-type pair if its ratio is greater than a threshold $NOISE\_RATIO$.
 
-Secondly, if we choose a too general level of abstraction, the resulting rules can be trivially true and brings no added information. To be specific, \textit{is(person) $\leftarrow$ is(singer)} is uninteresting, though it has very high confidence. In fact, \textit{person} type has high frequency and can be filtered out using another threshold. In this work, a number $k$ threshold is fixed and when we sort all predicate-type pairs in increasing order of frequency after removing noises, we just get at most top-$k$ types.
+Secondly, if we choose a too general level of abstraction, the resulting rules can be trivially true and brings no additional information. To be specific, \textit{is(person) $\leftarrow$ is(singer)} is uninteresting, though it has very high confidence. In fact, \textit{person} type has high frequency and can be filtered out using another threshold. In this work, a number $K$ threshold is fixed and when we sort all predicate-type pairs in increasing order of frequency after removing noises, we just get at most $TOP\_K$ types.
 
-The method will be presented formally in the following pseudo-code.
+This $TOP\_K$ parameter comes from the intuition that the more times a type appears, the more trivial it is. This is similar to term-frequency\footnote{\url{https://en.wikipedia.org/wiki/Tf-idf}} in Information Retrieval~\cite{ref2}, that is, trivial words like ``the", ``a", ``an", ... have high frequencies. Indeed, \textit{americanSinger} is more interesting than \textit{singer} or \textit{person} at the first glance and this is still true in conducted experiments.
 
-\subsection{Predicate Projection Method}
+From these intuitions, the problem statement and solution can be described as in the next section.
 
-\begin{algorithm}
+\subsection{Predicate Projection Method\\}
+
+\textbf{Definition 1 (Predicate Frequency):} Given a list of SPO triples $L$, $freq[P]$ is the number of triples in $L$ containing $P$ as a predicate.
+
+\textbf{Definition 2 (Predicate-Object Frequency):} Given a list of SPO triples $L$, $freq[PO]$ is the number of triples in $L$ containing $P$ as a predicate and $O$ as an object. If $freq[PO] < MIN\_FREQ$ which is a chosen integer threshold, then $PO$ is called non-popular.
+
+\textbf{Definition 3 (Predicate-Type Frequency and Ratio):} Given a list of SPO triples $L$, $freq[PT]$ is the number of triples in $L$ containing $P$ as a predicate and $O$ as an object of type $T$. Besides, $ratio[PT] = freq[PT] / freq[P]$. $PT$ is called a noise if $ratio[PT] < NOISE\_RATIO$ which is a chosen real threshold.
+
+\textbf{Definition 4 (\textit{TOP\_K} Types of a Predicate-Object Pair):} Given a predicate-object pair $PO$, if we sort all types $T$ of $O$ ($PT$ is not noise) according to the increasing order of $freq[PT]$, then $TOP\_K$ is the first $K$ types.
+
+\begin{framed}
+\textbf{Problem:} Predicate projection
+
+\textbf{Given:} A list of SPO triples $L$, a real number $NOISE\_RATIO$, two integers $MIN\_FREQ$ and $TOP\_K$
+
+\textbf{Solution:} Compute $R$ containing $SPO$ triples in which $O$ is an object and $freq[PO] > MIN\_FREQ$. Besides, $R$ may include $SPT$ triples in which $T$ is a type, and $T$ is in $TOP\_K$ types of a particular predicate-object pair $PO$.
+\end{framed}
+
+Main parameters for Algorithm~\ref{algo1} are $MIN\_FREQ$, $TOP\_K$ and $NOISE\_RATIO$. In brief, steps of this method can be described as follows:
+\begin{itemize}
+\item Firstly, based on facts containing type predicate, a set of possible types for each object can be found.
+\item Secondly, some statistics in above definitions are taken into account.
+\item Thirdly, we remove some $SPO$ triples such that the $PO$ is non-popular. For instance, \textit{actedIn(LionKing\\Returns)} is non-popular and can be deleted, but \textit{plays\\For(ManchesterUnited)} should be kept in the new RDF data.
+\item Finally, the algorithm focuses on selecting types for objects based on above proposed solution. That is, for each $SPO$ triple, the algorithm takes care of $TOP\_K$ types for $PO$ pair. This is equivalent to projecting object $O$ to several types and add generated facts to the new RDF data.
+\end{itemize}
+
+The method is presented formally in the Algorithm~\ref{algo1}. In addition, the code for this method can be found on the Internet\footnote{\url{https://github.com/htran010589/rdf-generator/blob/master/src/imdb/AutoGenRdf.java}}.
+
+\begin{algorithm}[ht]
 \caption{Predicate Projection Algorithm}
 \label{algo1}
 \begin{algorithmic}
@@ -47,35 +78,45 @@ The method will be presented formally in the following pseudo-code.
 \IF{$P$ is type predicate}
 \STATE add $O$ to the set of types for $P$
 \ENDIF
-\STATE poFrequency[PO]++
-\STATE pFrequency[P]++
+\STATE $freq[PO]++$  //  for predicate-object pair
+\STATE $freq[P]++$  //  for predicate
 \ENDFOR
+\STATE
 \FOR{each $SPO$ triple from $L$}
 \FOR{each type $T$ from type set of $O$}
-\STATE ptFrequency[PT]++
+\STATE $freq[PT]++$  //  for predicate-type pair
 \ENDFOR
 \ENDFOR
+\STATE
 \FOR{each $SPO$ triple from $L$}
-\IF{poFrequency[PO] > Threshold1}
+\IF{$freq[PO] > MIN\_FREQ$}
 \STATE add $SPO$ to $R$
 \ENDIF
+\STATE
+\STATE $TL$ $\leftarrow$ empty list
 \FOR{each type $T$ from type set of $O$}
-\STATE ratio $\leftarrow$ ptFrequency[PT] / pFrequency[P]
-\IF{ratio > Threshold2}
-\STATE add $T$ to type list TL
+\STATE $ratio[PT] \leftarrow freq[PT] / freq[P]$
+\IF{$ratio[PT] > NOISE\_RATIO$}
+\STATE add $T$ to type list $TL$
 \ENDIF
-\STATE sort TL in ascending order of ptFrequency
-\STATE choose top k types and add corresponding triples to $R$
 \ENDFOR
+\STATE sort types in $TL$ based on ascending order of predicate-type frequency
+\STATE choose $TOP\_K$ types and add corresponding subject-predicate-type triples to $R$
 \ENDFOR
-\RETURN(R)
+\STATE
+\RETURN $R$
 \end{algorithmic}
 \end{algorithm}
 
 \section{Future Work}
 
-Several approaches for matrix sketching problem are as follows. The first approach tends to find a sparse matrix from the original one. Because of the sparsity, some operations can be performed efficiently on this sketch~\cite{ref1}.
+The drawbacks of the current work lie in the fact that how can we choose the parameters. Actually the top-$k$ parameter can be different in different predicates and domains while it is fixed in the main method. Besides, how can we figure out what is ratio threshold for noises is still an open question.
 
+These problems can be easier if we narrow the domain, for example, movie, sports or healthcare. In addition, we can add some more predicates in order to mine more interesting rules. To be specific, additional predicates like ``directedBy", ``producedBy", ... are introduced in IMDB experiments. It is expected to have more good results if ``actedWith" is added to the data.
+
+Besides, when football domain of YAGO3~\cite{ref1} is extracted, there is no fact about \textit{Messi} - a famous footballer. Thus, if we focus on a specific domain, we can collect more facts to enhance rule mining results.
+
+In conclusion, optimizing rule mining for a chosen domain is one of solutions for future work.
 
 \bibliographystyle{abbrv}
 \bibliography{sigproc}
