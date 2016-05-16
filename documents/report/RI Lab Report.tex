@@ -36,7 +36,7 @@ Firstly, \textit{Bill Gates} can be known as a person name, or a name of a movie
 
 Secondly, if we choose a too general level of abstraction, the resulting rules can be trivially true and brings no additional information. More specifically, \textit{is(person) $\leftarrow$ is(singer)} is uninteresting, though it has very high confidence. In fact, \textit{person} type has high frequency and can be filtered out using another threshold. In this work, a number $TOP\_K$ threshold is fixed and when we sort all predicate-type pairs in increasing order of frequency after removing noises, we just get at most $TOP\_K$ types.
 
-This $TOP\_K$ parameter comes from the intuition that the more times a type appears, the more trivial it is. This is similar to term-frequency\footnote{\url{https://en.wikipedia.org/wiki/Tf-idf}} in Information Retrieval~\cite{ref2}, that is, trivial words like ``the", ``a", ``an", ... have high frequencies. Indeed, \textit{americanSinger} is more interesting than \textit{singer} or \textit{person} at the first glance, and, $isAmericanSinger$ is expected to have lower frequency than $isSinger$ or $isPerson$ in the RDF data.
+This $TOP\_K$ parameter comes from the intuition that the more times a type appears, the more trivial it is. This is similar to term-frequency\footnote{\url{https://en.wikipedia.org/wiki/Tf-idf}} in Information Retrieval~\cite{ref2}, that is, trivial words like ``the", ``a", ``an", ... have high frequencies. Indeed, \textit{americanSinger} is more interesting than \textit{person} at the first glance. To choose the former instead of the latter, it is expected that $isAmericanSinger$ is has lower frequency than $isPerson$, hence, has higher chance to be in $TOP\_K$.
 
 From these intuitions, the problem statement and solution can be described as in the next section.
 
@@ -50,6 +50,8 @@ From these intuitions, the problem statement and solution can be described as in
 
 \textbf{Definition 4 (\textit{TOP\_K} Types of a Predicate-Object Pair):} Given a predicate-object pair $PO$, if we sort all types $T$ of $O$ ($PT$ is not noise) according to the increasing order of $freq[PT]$, then $TOP\_K$ is the first $K$ types.
 
+The problem statement with proposed solution can be shown as follows:
+
 \begin{framed}
 \textbf{Problem:} Predicate projection
 
@@ -58,7 +60,7 @@ From these intuitions, the problem statement and solution can be described as in
 \textbf{Solution:} Compute $R$ containing $SPO$ triples in which $O$ is an object and $freq[PO] > MIN\_FREQ$. Besides, $R$ may include $SPT$ triples in which $T$ is a type, and $T$ is in $TOP\_K$ types of a particular predicate-object pair $PO$.
 \end{framed}
 
-Main parameters for Algorithm~\ref{algo1} are $MIN\_FREQ$, $TOP\_K$ and $NOISE\_RATIO$. In brief, steps of this method can be described as follows:
+Main parameters for Algorithm~\ref{algo1} are $MIN\_FREQ$, $TOP\_K$ and $NOISE\_RATIO$. In brief, there are four steps in this method:
 \begin{itemize}
 \item Firstly, based on facts containing type predicate, a set of possible types for each object can be found.
 \item Secondly, some statistics in above definitions are taken into account.
@@ -110,9 +112,9 @@ The method is presented formally in the Algorithm~\ref{algo1}. In addition, the 
 
 \section{Future Work}
 
-The drawbacks of the current work lie in the fact that how can we choose the parameters. Actually the top-$k$ parameter can be different in different predicates and domains while it is fixed in the main method. Besides, how can we figure out what is ratio threshold for noises is still an open question.
+The drawbacks of the current work lie in the fact that how can we choose the parameters. Actually the $TOP\_K$ parameter can be different in different predicates and domains while it is fixed in the main method. Besides, how can we figure out what is ratio threshold for noises is still an open question.
 
-These problems can be easier if we narrow the domain, for example, movie, sports or healthcare. In addition, we can add some more predicates in order to mine more interesting rules. To be specific, additional predicates like ``directedBy", ``producedBy", ... are introduced in IMDB experiments. It is expected to have more good results if ``actedWith" is added to the data.
+These problems can be easier if we narrow the domain, for example, movie, sports or healthcare. In addition, we can add some more predicates in order to mine more interesting rules. To be specific, additional predicates like \textit{directedBy}, \textit{producedBy}, ... are introduced in IMDB experiments. It is expected to have more good results if \textit{actedWith} is added to the data. Instead of manually chosen predicates, the predicate mining can be proposed to dig deeply into.
 
 Besides, when football domain of YAGO3~\cite{ref1} is extracted, there is no fact about \textit{Messi} - a famous footballer. Thus, if we focus on a specific domain, we can collect more facts to enhance rule mining results.
 
