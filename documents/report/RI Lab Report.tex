@@ -15,26 +15,29 @@
 \alignauthor
 Hai Dang Tran\\Matriculation Number: 2557779
 }
-\date{09 January 2016}
+\date{17 January 2016}
 
 \maketitle
 
 \section{INTRODUCTION}
-This report proposes a simple predicate projection algorithm to mine interesting rules from RDF\footnote{\url{https://en.wikipedia.org/wiki/Resource_Description_Framework}} graph. More specifically, the input of the algorithm is an RDF file containing list of subject-predicate-object triples ($SPO$). The algorithm tends to \textbf{select types} for objects and \textbf{project} binary predicates to abstracted unary ones. For example, $marriedToSinger()$ is in a higher level and more interesting than $marriedTo(Britney)$.
+This report proposes a predicate projection algorithm for an RDF\footnote{\url{https://en.wikipedia.org/wiki/Resource_Description_Framework}} graph. More specifically, given an RDF file containing a list of subject-predicate-object triples ($SPO$), the algorithm \textbf{selects types} for objects and \textbf{projects} binary facts to abstracted unary ones.
 
-The motivation for this work is that, some predicate-object pairs, such as $marriedTo(Britney)$, have low frequency in some RDF data. By contrast, the data may contain millions of facts. As a consequence, relatively infrequent predicate-object pairs have low chance to appear in the result after using rule mining. To tackle the issue, projecting objects to types is taken into account. Indeed, thanks to this, the frequency of predicate-object pairs is higher and can be easier to be explored for rule mining. Besides, rules are often intrinsically general, they should include abstract types instead of specific entities.
+\textit{Example 1:} Consider a triple \textit{<Mat marriedTo Britney>}, which can be presented as a fact \textit{marriedTo(Mat, Britney)}. The goal of the algorithm is to select a type of \textit{Britney}, e.g., \textit{singer} among all of the types of this entity, and, construct a unary fact, e.g, \textit{marriedToSinger(Mat)}.
 
-Details of the main method are described in the next section. Finally, some questions for discussion will be mentioned in the last part of the report.
+
+Straightforward creation of unary facts from binary ones, by concatenating a given predicate $P$ in $P(S, O)$ and an object $O$, results in facts of the form $PO(S)$, which are normally very infrequent. Indeed, in example 1, \textit{marriedToBritney(Mat)} most probably is the only fact over the predicate \textit{marriedToBritney}. To tackle the issue, such projection approach is taken into account. Indeed, thanks to this, the frequency of predicate-object pairs is higher and can be easier explored for rule mining.
+
+Details of the main method are described in the next section. Finally, some questions for discussion are mentioned in the last part of the report.
 
 \section{Projection Strategy}
 
 \subsection{Intuition}
 
-The intuition of the method is simple, that is, knowing facts about some types or categories is more interesting than specific individuals. For instance, \textit{hasDuration(short) $\leftarrow$ isMovie(comedy)} is more meaningful than \textit{hasDuration(short) $\leftarrow$ isMovie(LionKingReturns)}. Since the first one reflects a general fact, it can be applied to many other specific movie instances with the same type $comedy$. However, naively using all types of individuals has some problems as the following examples demonstrate:
+The intuition of the method is that, knowing facts about some types or categories is more interesting than specific individuals. For instance, \textit{hasDuration(short) $\leftarrow$ isMovie(comedy)} is more meaningful than \textit{hasDuration(short) $\leftarrow$ isMovie(LionKingReturns)}. Since the first one reflects a general fact, it can be applied to many other specific movie instances with the same type $comedy$. However, naively using all types of individuals has some problems as the following examples demonstrate:
 
 Firstly, \textit{Bill Gates} can be known as a person name, or a name of a movie about the person 's life story. The question is: with a predicate-object pair, how can we choose suitable types of objects for the predicate. The intuition is that, of all types for objects corresponding with predicate \textit{marriedTo} predicate, the ratio of \textit{person} is much larger than \textit{movieName}. Thus, we can filter category noises based on ratio of predicate-type pair frequency over predicate frequency. That is, we just take care of a predicate-type pair if its ratio is greater than a threshold $NOISE\_RATIO$.
 
-Secondly, if we choose a too general level of abstraction, the resulting rules can be trivially true and brings no additional information. More specifically, \textit{is(person) $\leftarrow$ is(singer)} is uninteresting, though it has very high confidence. In fact, \textit{person} type has high frequency and can be filtered out using another threshold. In this work, a number $TOP\_K$ threshold is fixed and when we sort all predicate-type pairs in increasing order of frequency after removing noises, we just get at most $TOP\_K$ types.
+Secondly, if we choose a too general level of abstraction, the resulting rules can be trivially true, and thus, not informative. More specifically, \textit{is(person) $\leftarrow$ is(singer)} is uninteresting, though it has very high confidence. In fact, \textit{person} type has high frequency and can be filtered out using another threshold. In this work, a number $TOP\_K$ threshold is fixed and when we sort all predicate-type pairs in increasing order of frequency after removing noises, we just get at most $TOP\_K$ types.
 
 This $TOP\_K$ parameter comes from the intuition that the more times a type appears, the more trivial it is. This is similar to term-frequency\footnote{\url{https://en.wikipedia.org/wiki/Tf-idf}} in Information Retrieval~\cite{ref2}, that is, trivial words like ``the", ``a", ``an", ... have high frequencies. Indeed, \textit{americanSinger} is more interesting than \textit{person} at the first glance. To choose the former instead of the latter, it is expected that $isAmericanSinger$ is has lower frequency than $isPerson$, hence, has higher chance to be in $TOP\_K$.
 
@@ -42,22 +45,22 @@ From these intuitions, the problem statement and solution can be described as in
 
 \subsection{Predicate Projection Method\\}
 
-\textbf{Definition 1 (Predicate Frequency):} Given a list of SPO triples $L$, $freq[P]$ is the number of triples in $L$ containing $P$ as a predicate.
+\textbf{Definition 1 (Predicate Frequency):} Given a list of SPO triples $L$, $freq(P)$ is the number of triples in $L$ containing $P$ as a predicate.
 
-\textbf{Definition 2 (Predicate-Object Frequency):} Given a list of SPO triples $L$, $freq[PO]$ is the number of triples in $L$ containing $P$ as a predicate and $O$ as an object. If $freq[PO] < MIN\_FREQ$ which is a chosen integer threshold, then $PO$ is called non-popular.
+\textbf{Definition 2 (Predicate-Object Frequency):} Given a list of SPO triples $L$, $freq(PO)$ is the number of triples in $L$ containing $P$ as a predicate and $O$ as an object. If $freq(PO) < MIN\_FREQ$ which is a chosen integer threshold, then $PO$ is called non-popular.
 
-\textbf{Definition 3 (Predicate-Type Frequency and Ratio):} Given a list of SPO triples $L$, $freq[PT]$ is the number of triples in $L$ containing $P$ as a predicate and $O$ as an object of type $T$. Besides, $ratio[PT] = freq[PT] / freq[P]$. $PT$ is called a noise if $ratio[PT] < NOISE\_RATIO$ which is a chosen real threshold.
+\textbf{Definition 3 (Predicate-Type Frequency and Ratio):} Given a list of SPO triples $L$, $freq(PT)$ is the number of triples in $L$ containing $P$ as a predicate and $O$ as an object of type $T$. Besides, $ratio(PT) = freq(PT) / freq(P)$. $PT$ is called a noise if $ratio(PT) < NOISE\_RATIO$ which is a chosen real threshold.
 
-\textbf{Definition 4 (\textit{TOP\_K} Types of a Predicate-Object Pair):} Given a predicate-object pair $PO$, if we sort all types $T$ of $O$ ($PT$ is not noise) according to the increasing order of $freq[PT]$, then $TOP\_K$ is the first $K$ types.
+\textbf{Definition 4 (\textit{TOP\_K} Types of a Predicate-Object Pair):} Given a predicate-object pair $PO$, if we sort all types $T$ of $O$ ($PT$ is not noise) according to the increasing order of $freq(PT)$, then $TOP\_K$ is the first $K$ types.
 
-The problem statement with proposed solution can be shown as follows:
+The problem that we are tackling in this work is now formally stated:
 
 \begin{framed}
 \textbf{Problem:} Predicate projection
 
 \textbf{Given:} A list of SPO triples $L$, a real number $NOISE\_RATIO$, two integers $MIN\_FREQ$ and $TOP\_K$
 
-\textbf{Solution:} Compute $R$ containing $SPO$ triples in which $O$ is an object and $freq[PO] > MIN\_FREQ$. Besides, $R$ may include $SPT$ triples in which $T$ is a type, and $T$ is in $TOP\_K$ types of a particular predicate-object pair $PO$.
+\textbf{Compute:} A list of unary facts $PO(S)$ in which $O$ is an object and $freq(PO) > MIN\_FREQ$. Besides, $R$ may include $PT(S)$ where $T$ is a type, and $T$ is in $TOP\_K$ types of a particular predicate-object pair $PO$.
 \end{framed}
 
 Main parameters for Algorithm~\ref{algo1} are $MIN\_FREQ$, $TOP\_K$ and $NOISE\_RATIO$. In brief, there are four steps in this method:
@@ -80,25 +83,25 @@ The method is presented formally in the Algorithm~\ref{algo1}. In addition, the 
 \IF{$P$ is type predicate}
 \STATE add $O$ to the set of types for $P$
 \ENDIF
-\STATE $freq[PO]++$  //  for predicate-object pair
-\STATE $freq[P]++$  //  for predicate
+\STATE $freq(PO)++$  //  for predicate-object pair
+\STATE $freq(P)++$  //  for predicate
 \ENDFOR
 \STATE
 \FOR{each $SPO$ triple from $L$}
 \FOR{each type $T$ from type set of $O$}
-\STATE $freq[PT]++$  //  for predicate-type pair
+\STATE $freq(PT)++$  //  for predicate-type pair
 \ENDFOR
 \ENDFOR
 \STATE
 \FOR{each $SPO$ triple from $L$}
-\IF{$freq[PO] > MIN\_FREQ$}
+\IF{$freq(PO) > MIN\_FREQ$}
 \STATE add $SPO$ to $R$
 \ENDIF
 \STATE
 \STATE $TL$ $\leftarrow$ empty list
 \FOR{each type $T$ from type set of $O$}
-\STATE $ratio[PT] \leftarrow freq[PT] / freq[P]$
-\IF{$ratio[PT] > NOISE\_RATIO$}
+\STATE $ratio(PT) \leftarrow freq(PT) / freq(P)$
+\IF{$ratio(PT) > NOISE\_RATIO$}
 \STATE add $T$ to type list $TL$
 \ENDIF
 \ENDFOR
