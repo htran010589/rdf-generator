@@ -20,54 +20,49 @@ Hai Dang Tran\\Matriculation Number: 2557779
 \maketitle
 
 \section{INTRODUCTION}
-This report proposes a predicate projection algorithm for an RDF\footnote{\url{https://en.wikipedia.org/wiki/Resource_Description_Framework}} graph. More specifically, given an RDF file containing a list of subject-predicate-object triples ($SPO$), the algorithm \textbf{selects types} for objects and \textbf{projects} binary facts to abstracted unary ones.
+This report proposes a predicate projection algorithm for an RDF\footnote{\url{https://en.wikipedia.org/wiki/Resource_Description_Framework}} graph. More specifically, given an RDF file containing a list of subject-predicate-object triples \textit{<SPO>}, the algorithm \textbf{selects types} for objects $O$ and uses these types for \textbf{projecting} binary facts to abstracted unary ones.
 
-\textit{Example 1:} Consider a list of triples: \textit{<BillGates type person>, <BillGates type movie>, <Britney type singer>, <Britney type person>, <Melinda marriedTo BillGates>, <Kevin marriedTo Britney> <Katy type singer> <Katy type person> <Brand marriedTo Katy>}.
+\textit{Example 1:} Consider a fragment of an RDF graph given as list of triples: \textit{<BillGates type person>, <BillGates type movie>, <Britney type singer>, <Britney type person>, <Melinda marriedTo BillGates>, <Kevin marriedTo Britney>, <Katy type singer>, <Katy type person>, <Brand marriedTo Katy>}.
 
-In this example, the triple \textit{<Kevin marriedTo Britney>} can be presented as a fact \textit{marriedTo(Kevin, Britney)}. The goal of the algorithm is to select a type of \textit{Britney}, e.g., \textit{singer} among all of the types of this entity, and, construct a unary fact, e.g, \textit{marriedToSinger(Kevin)}.
+Every such tripe \textit{<SPO>} can be represented as \textit{P(S, O)} if \textit{P} is not \textit{type} (e.g. \textit{<Kevin marriedTo Britney>} can be seen as \textit{marriedTo(Kevin, Britney)}). The goal of the algorithm is to select a type of \textit{Britney}, e.g., \textit{singer} among all of the types of this entity, and, construct a unary fact, e.g, \textit{marriedToSinger(Kevin)}.
 
-Such projection approach is needed for creating datasets of unary facts that can be exploited for testing rule mining algorithm. In details, straightforward creation of unary facts from binary ones, is concatenating a given predicate $P$ in $P(S, O)$ and an object $O$. This results in facts of the form $PO(S)$ which are normally very infrequent. Indeed, in example 1, \textit{marriedToBritney(Mat)} most probably is the only fact over the predicate \textit{marriedToBritney}. To tackle the issue, such projection approach is taken into account. Thanks to this, the frequency of predicate-object pairs is higher and can be easier explored for rule mining.
+Such projection approach is needed for creating datasets of unary facts that can be exploited for testing rule mining algorithm. Straightforward creation of unary facts from binary ones, concatenates a given predicate $P$ in $P(S, O)$ and an object $O$, results in facts of the form $PO(S)$. These are normally very infrequent, e.g, in Example 1, \textit{marriedToBritney(Mat)} most probably is the only fact over the predicate \textit{marriedToBritney}. To tackle this issue, we propose an approach which creates unary facts. Thanks to this, the frequency of predicate-object pairs is higher and can be fruitfully explored for rule mining.
 
-Details of the main method are described in the next section. Finally, some questions for discussion are mentioned in the last part of the report.
+Details of the main method are described in the next section. Finally, some future work directions are mentioned in the last part of the report.
 
 \section{Projection Strategy}
 
-\subsection{Intuition}
-\label{intuition}
-
-%The intuition of the method is that, knowing facts about some types or categories is more interesting than specific individuals. For instance, \textit{hasDuration(short) $\leftarrow$ isMovie(comedy)} is more meaningful than \textit{hasDuration(short) $\leftarrow$ isMovie(LionKingReturns)}. Since the first one reflects a general fact, it can be applied to many other specific movie instances with the same type $comedy$.
-
 So far we can see the benefits of predicate projection and naively using all types of objects can be the first solution. However, this approach has some problems as follows:
 
-Firstly, example 1 shows that \textit{BillGates} can be known as a person name, or a name of a movie about the person 's life story. The question is: with a predicate-object pair, how can we choose suitable types of objects for the predicate?
+Firstly, Example 1 shows that \textit{BillGates} can be known as a person name, or a name of a movie about the person 's life story. The question is: with a predicate-object pair, how can we choose suitable types of objects for the predicate?
 
-Secondly, in the example, after projecting predicates with all types and mining rules, the output can be \textit{marriedToPerson $\leftarrow$ marriedToSinger}. This is a consequence of choosing a too general level of abstraction, which generates trivially true rules. Though they have very high confidence, they are not informative.
+Secondly, in the Example, after projecting predicates with all types and mining rules, the output can be \textit{marriedToPerson $\leftarrow$ marriedToSinger}. This is a consequence of choosing a too general level of abstraction, which generates trivially true rules. Though they have very high confidence, they are not informative.
+
+\subsection{Predicate Projection Method}
 
 While the first issue can be tackled by a technique mentioned in definition 2 of the next section, this part focuses on how to solve the second one. The intuition is that the more times a type appears, the more trivial it is. This is similar to term-frequency\footnote{\url{https://en.wikipedia.org/wiki/Tf-idf}} in Information Retrieval~\cite{ref2}, that is, trivial words like ``the", ``a", ``an", ... have high frequencies.
 
-Applying the intuition to the example, \textit{marriedToPerson} has high frequency and can be filtered out using a fixed threshold $TOP\_K$. In details, when we sort all predicate-type pairs in increasing order of frequency after removing noises, we just get at most $TOP\_K$ types. More specifically, it is expected that $marriedToSinger$ has lower frequency than $marriedToPerson$, hence, has higher chance to be in $TOP\_K$.
+Applying the intuition to the Example, \textit{marriedToPerson} has high frequency and can be filtered out using a fixed threshold $TOP\_K$. In details, when we sort all predicate-type pairs in increasing order of frequency after removing noises, we just get at most $TOP\_K$ types. More specifically, it is expected that $marriedToSinger$ has lower frequency than $marriedToPerson$, hence, has higher chance to be in $TOP\_K$.
 
-From the intuition, the problem statement and solution can be described as in the next section.
-
-\subsection{Predicate Projection Method\\}
+The problem that we are tackling in this work and its solution are formally presented in the next section.
 
 \textbf{Definition 1 (Predicate Frequency):} Given a list of SPO triples $L$, $freq(P)$ is the number of triples in $L$ containing $P$ as a predicate.
 
-In example 1, by definition, we have $freq(type) = 6$ and $freq(marriedTo) = 3$.
+In Example 1, we have $freq(type) = 6$ and $freq(marriedTo) = 3$.
 
 \textbf{Definition 2 (Predicate-Object Frequency):} Given a list of SPO triples $L$, $freq(PO)$ is the number of triples in $L$ containing $P$ as a predicate and $O$ as an object. If $freq(PO) < MIN\_FREQ$ which is a chosen integer threshold, then $PO$ is called non-popular.
 
-In the example, $freq(typePerson) = 3$ since there are three triples containing \textit{type} and \textit{person}.
+In the Example, $freq(typePerson) = 3$ since there are three triples containing \textit{type} and \textit{person}.
 
 \textbf{Definition 3 (Predicate-Type Frequency and Ratio):} Given a list of SPO triples $L$, $freq(PT)$ is the number of triples in $L$ containing $P$ as a predicate and $O$ as an object of type $T$. Besides, $ratio(PT) = freq(PT) / freq(P)$. $PT$ is called a noise if $ratio(PT) < NOISE\_RATIO$ which is a chosen real threshold.
 
-Applying these definitions to the example, we have $freq\\(marriedToSinger) = 2$, $ratio(marriedToMovie) = 1 / 3$ and $ratio(marriedToPerson) = 3 / 3$.
+Applying these definitions to the Example, we have $freq\\(marriedToSinger) = 2$, $ratio(marriedToMovie) = 1 / 3$ and $ratio(marriedToPerson) = 3 / 3$.
 
 Observe that $ratio(marriedToMovie)$ can be very small in the real large data, and, \textit{movie} can be detected as noise for predicate \textit{marriedTo}. Hence, we can filter type noises based on ratio measure. That is, we just take care of a predicate-type pair if its ratio is greater than a threshold $NOISE\_RATIO$. With this solution, the first problem mentioned in the subsection~\ref{intuition} can be solved.
 
 \textbf{Definition 4 (\textit{TOP\_K} Types of a Predicate-Object Pair):} Given a predicate-object pair $PO$, if we sort all types $T$ of $O$ ($PT$ is not noise) according to the increasing order of $freq(PT)$, then $TOP\_K$ is the first $K$ types.
 
-To illustrate, $TOP\_1$ of \textit{type} is \{\textit{person}\} and $TOP\_2$ of \textit{marriedTo} is \{\textit{singer, person}\} in the example.
+To illustrate, $TOP\_1$ of \textit{type} is \{\textit{person}\} and $TOP\_2$ of \textit{marriedTo} is \{\textit{singer, person}\} in the Example.
 
 The problem that we are tackling in this work is now formally stated:
 
@@ -140,9 +135,9 @@ $R$ $\leftarrow$ empty list
 
 \section{Future Work}
 
-There are several directions to improve the proposed method. Our current approach assumes that the parameters are provided. Actually, the $TOP\_K$ parameter can be different in different predicates and domains while it is fixed in the main method. Thus, firstly, how can we choose the parameters automatically for open domain is an approach for extending this work.
+There are several directions for improvement of the proposed method. Our current approach assumes that the parameters are provided. Actually, the $TOP\_K$ parameter can be different for different predicates and domains while it is fixed in the main method. Thus, firstly, how can we choose the parameters automatically for open domain is an open problem, which needs to be further studied.
 
-Secondly, another direction is that, the mentioned problems can be resolved easier by the user once the domain is narrowed. Indeed, since the domain is fixed, the number of predicates can be not too large, and based on experiments we can set some parameters empirically. Besides, instead of manually chosen relations, we can mine and cluster them to different groups. Hence, choosing suitable types to project for each group of relations can be taken into account.
+Another direction is that, the mentioned problems can be resolved easier by the user once the domain is narrowed. Indeed, since the domain is fixed, the number of predicates can be not too large, and based on experiments we can set some parameters empirically. Besides, instead of manually chosen relations, we can mine and cluster them to different groups. Hence, choosing suitable types to project for each group of relations can be taken into account.
 
 \bibliographystyle{abbrv}
 \bibliography{sigproc}
