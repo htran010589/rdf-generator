@@ -20,23 +20,25 @@ Hai Dang Tran\\Matriculation Number: 2557779
 \maketitle
 
 \section{INTRODUCTION}
-This report proposes a predicate projection algorithm for an RDF\footnote{\url{https://en.wikipedia.org/wiki/Resource_Description_Framework}} graph. More specifically, given an RDF file containing a list of subject-predicate-object triples \textit{<SPO>}, the algorithm \textbf{selects types} for objects $O$ and uses these types for \textbf{projecting} binary facts to abstracted unary ones.
+This report proposes a predicate projection algorithm for an RDF\footnote{\url{https://en.wikipedia.org/wiki/Resource_Description_Framework}} graph. More specifically, given an RDF file containing a set of subject-predicate-object triples \textit{<SPO>}, the algorithm \textbf{selects types} for objects $O$ and uses these types for \textbf{projecting} binary facts to abstracted unary ones.
 
-\textit{Example 1:} Consider a fragment of an RDF graph given as list of triples: \textit{<BillGates type person>, <BillGates type movie>, <Britney type singer>, <Britney type person>, <Melinda marriedTo BillGates>, <Kevin marriedTo Britney>, <Katy type singer>, <Katy type person>, <Brand marriedTo Katy>}.
+\textit{Example 1:} Consider a fragment of an RDF graph given as set of triples: \textit{<BillGates type person>, <BillGates type movie>, <Britney type singer>, <Britney type person>, <Melinda marriedTo BillGates>, <Kevin marriedTo Britney>, <Katy type singer>, <Katy type person>, <Brand marriedTo Katy>, <Kevin bornIn America>, <Brand bornIn America>}.
 
-Every such tripe \textit{<SPO>} can be represented as \textit{P(S, O)} if \textit{P} is not \textit{type} (e.g. \textit{<Kevin marriedTo Britney>} can be seen as \textit{marriedTo(Kevin, Britney)}). The goal of the algorithm is to select a type of \textit{Britney}, e.g., \textit{singer} among all of the types of this entity, and, construct a unary fact, e.g, \textit{marriedToSinger(Kevin)}.
+Every such triple \textit{<SPO>} can be represented as \textit{P(S, O)} if \textit{P} is not \textit{type} (e.g. \textit{<Kevin marriedTo Britney>} can be seen as \textit{marriedTo(Kevin, Britney)}). Actually, usage of unary facts obtained from \textit{<S type O>} results in uninteresting rules due to the clean type hierarchy. The goal of the algorithm is to select a type of \textit{Britney}, e.g., \textit{singer} among all of the types of this entity, and, construct a unary fact, e.g, \textit{marriedToSinger(Kevin)}.
 
-Such projection approach is needed for creating datasets of unary facts that can be exploited for testing rule mining algorithm. Straightforward creation of unary facts from binary ones, concatenates a given predicate $P$ in $P(S, O)$ and an object $O$, results in facts of the form $PO(S)$. These are normally very infrequent, e.g, in Example 1, \textit{marriedToBritney(Mat)} most probably is the only fact over the predicate \textit{marriedToBritney}. To tackle this issue, we propose an approach which creates unary facts. Thanks to this, the frequency of predicate-object pairs is higher and can be fruitfully explored for rule mining.
+Such projection approach is needed for creating datasets of unary facts that can be exploited for testing rule mining algorithm, e.g, checking an output of the method like \textit{bornInAmerica(x) $\leftarrow$ marriedToSinger(x)} makes sense or not. Straightforward creation of unary facts from binary ones, concatenates a given predicate $P$ in $P(S, O)$ and an object $O$, results in facts of the form $PO(S)$. These are normally very infrequent, e.g, in Example 1, \textit{marriedToBritney(Mat)} most probably is the only fact over the predicate \textit{marriedToBritney}.  To tackle this issue, we propose an approach which creates unary facts over predicates whose frequency is higher and can be fruitfully explored for rule mining.
 
 Details of the main method are described in the next section. Finally, some future work directions are mentioned in the last part of the report.
 
 \section{Projection Strategy}
 
-So far we can see the benefits of predicate projection and naively using all types of objects can be the first solution. However, this approach has some problems as follows:
+So far we can see the benefits of predicate projection and naively using all types of objects can be the first solution. That is, one could create for every fact \textit{P(S, O)} a set of facts \textit{P$T_{i}$(O)} where \textit{$T_{i}$} is a type of $O$. However, this approach has some problems as follows:
 
-Firstly, Example 1 shows that \textit{BillGates} can be known as a person name, or a name of a movie about the person 's life story. The question is: with a predicate-object pair, how can we choose suitable types of objects for the predicate?
+(1) Observe that in Example 1, \textit{BillGates} is a person's name, and a name of a movie about the person 's life story. It is unclear which exactly type can be used for abstracting a fact at hand, e.g, \textit{<Melinda marriedTo movie>} or \textit{<Melinda marriedTo person>}?
 
-Secondly, in the Example, after projecting predicates with all types and mining rules, the output can be \textit{marriedToPerson $\leftarrow$ marriedToSinger}. This is a consequence of choosing a too general level of abstraction, which generates trivially true rules. Though they have very high confidence, they are not informative.
+(2) In the Example, after projecting predicates with all types and mining rules, the output can be \textit{marriedToPerson($x$) $\leftarrow$ marriedToSinger($x$)}. This is a consequence of choosing a too general level of abstraction, which generates trivially true rules. Despite having very high confidence, they are not informative.
+
+To deal with the described issues (1) and (2), we propose the following method for identifying appropriate types.
 
 \subsection{Predicate Projection Method}
 
@@ -44,55 +46,53 @@ While the first issue can be tackled by a technique mentioned in definition 2 of
 
 Applying the intuition to the Example, \textit{marriedToPerson} has high frequency and can be filtered out using a fixed threshold $TOP\_K$. In details, when we sort all predicate-type pairs in increasing order of frequency after removing noises, we just get at most $TOP\_K$ types. More specifically, it is expected that $marriedToSinger$ has lower frequency than $marriedToPerson$, hence, has higher chance to be in $TOP\_K$.
 
-The problem that we are tackling in this work and its solution are formally presented in the next section.
+The problem that we are tackling in this work and its solution are formally presented after introducing some supporting definitions.
 
-\textbf{Definition 1 (Predicate Frequency):} Given a list of SPO triples $L$, $freq(P)$ is the number of triples in $L$ containing $P$ as a predicate.
+\textbf{Definition 1 (Predicate Frequency):} Given a set $L$ of \textit{<SPO>} triples, $freq(P)$ is the number of triples in $L$ containing $P$ as a predicate.
 
 In Example 1, we have $freq(type) = 6$ and $freq(marriedTo) = 3$.
 
-\textbf{Definition 2 (Predicate-Object Frequency):} Given a list of SPO triples $L$, $freq(PO)$ is the number of triples in $L$ containing $P$ as a predicate and $O$ as an object. If $freq(PO) < MIN\_FREQ$ which is a chosen integer threshold, then $PO$ is called non-popular.
+\textbf{Definition 2 (Predicate-Object Frequency):} Given a set $L$ of \textit{<SPO>} triples, $freq(PO)$ is the number of triples in $L$ containing $P$ as a predicate and $O$ as an object. If $freq(PO) < MIN\_FREQ$ which is a chosen integer threshold, then $PO$ is called non-popular.
 
-In the Example, $freq(typePerson) = 3$ since there are three triples containing \textit{type} and \textit{person}.
+In Example 1, $freq(typePerson) = 3$ since there are three triples containing \textit{type} and \textit{person}.
 
-\textbf{Definition 3 (Predicate-Type Frequency and Ratio):} Given a list of SPO triples $L$, $freq(PT)$ is the number of triples in $L$ containing $P$ as a predicate and $O$ as an object of type $T$. Besides, $ratio(PT) = freq(PT) / freq(P)$. $PT$ is called a noise if $ratio(PT) < NOISE\_RATIO$ which is a chosen real threshold.
+\textbf{Definition 3 (Predicate-Type Frequency and Ratio):} Given a set $L$ of \textit{<SPO>} triples, $freq(PT)$ is the number of triples in $L$ containing $P$ as a predicate and $O$ as an object of type $T$. Besides, $ratio(PT) = freq(PT) / freq(P)$. $PT$ is called a noise if $ratio(PT) < NOISE\_RATIO$ which is a specified real threshold.
 
-Applying these definitions to the Example, we have $freq\\(marriedToSinger) = 2$, $ratio(marriedToMovie) = 1 / 3$ and $ratio(marriedToPerson) = 3 / 3$.
+In Example 1, we have $freq\\(marriedToSinger) = 2$, $ratio(marriedToMovie) = 1 / 3$ and $ratio(marriedToPerson) = 3 / 3 = 1$.
 
-Observe that $ratio(marriedToMovie)$ can be very small in the real large data, and, \textit{movie} can be detected as noise for predicate \textit{marriedTo}. Hence, we can filter type noises based on ratio measure. That is, we just take care of a predicate-type pair if its ratio is greater than a threshold $NOISE\_RATIO$. With this solution, the first problem mentioned in the subsection~\ref{intuition} can be solved.
+Observe that $ratio(marriedToMovie)$ can be very small in the real world data, and, \textit{movie} can be detected as noise for predicate \textit{marriedTo}. This motivates us to filter type noises based on ratio measure. That is, we take care of a predicate-type pair if its ratio is greater than a threshold $NOISE\_RATIO$, otherwise we drop it. This helps to solve the first problem mentioned in the subsection~\ref{intuition} can be solved.
 
-\textbf{Definition 4 (\textit{TOP\_K} Types of a Predicate-Object Pair):} Given a predicate-object pair $PO$, if we sort all types $T$ of $O$ ($PT$ is not noise) according to the increasing order of $freq(PT)$, then $TOP\_K$ is the first $K$ types.
+\textbf{Definition 4 (\textit{TOP\_K} Types of a Predicate-Object Pair):} Given a predicate-object pair $PO$, $TOP\_K$ types of $PO$ is $TOP\_K$ most frequent types $T_{i}$, i.e. $TOP\_K$ types with the smallest $freq(PT_{i})$ value.
 
-To illustrate, $TOP\_1$ of \textit{type} is \{\textit{person}\} and $TOP\_2$ of \textit{marriedTo} is \{\textit{singer, person}\} in the Example.
+$TOP\_2$ of \textit{marriedToBritney} is \{\textit{singer, person}\} in the Example.
 
-The problem that we are tackling in this work is now formally stated:
+We are now ready to formally states the problem we are tackling in this work:
 
 \begin{framed}
 \textbf{Problem:} Predicate projection
 
-\textbf{Given:} A list of SPO triples $L$, a real number $NOISE\_RATIO$, two integers $MIN\_FREQ$ and $TOP\_K$
+\textbf{Given:} A set $L$ of \textit{<SPO>} triples, a real number $NOISE\_RATIO$, two integers $MIN\_FREQ$ and $TOP\_K$
 
-\textbf{Compute:} A list of unary facts $PO(S)$ in which $O$ is an object and $freq(PO) > MIN\_FREQ$. Besides, $R$ may include $PT(S)$ where $T$ is a type, and $T$ is in $TOP\_K$ types of a particular predicate-object pair $PO$.
+\textbf{Compute:} A set $R$ of unary facts $PO'(S)$ where $O' = O$ is an object and $freq(PO) > MIN\_FREQ$; or $O' = T$ is a type, and $T$ is in $TOP\_K$ types of a particular predicate-object pair $PO$.
 \end{framed}
 
-The Algorithm~\ref{algo1} which solves the presented problem, is now described in details. There are four steps in the proposed method:
+The Algorithm~\ref{algo1} which solves the presented problem, is now described in details, the code can be found on the Internet\footnote{\url{https://github.com/htran010589/rdf-generator/blob/master/src/imdb/AutoGenRdf.java}}. There are four steps in the proposed method:
 \begin{itemize}
-\item Firstly, from line $2$ to $8$, based on facts containing type predicate, a set of possible types for each object is found. In addition, we calculate $freq(PO)$ and $freq(O)$ from all triples in $L$.
-\item Secondly, from line $9$ to $13$, $freq(PT)$ is taken into account by enumerating all facts and types of objects in a triple.
-\item Thirdly, from line $14$ to $18$, we remove some $SPO$ triples such that the $PO$ is non-popular. For instance, \textit{actedIn(LionKingReturns)} is non-popular and can be deleted, but \textit{playsFor(ManchesterUnited)} should be kept in the new RDF data.
-\item Finally, from line $19$ to $28$, the algorithm focuses on selecting types for objects based on the solution proposed above. That is, for each $SPO$ triple, the algorithm takes care of $TOP\_K$ types for $PO$ pair. This is equivalent to projecting object $O$ to several types and adding the generated facts to the new RDF data.
+\item First, based on facts containing type predicate, a set of possible types for each object is found. In addition, $freq(PO)$ and $freq(O)$ are calculated for all triples in $L$ (line 2 - 8).
+\item After that, $freq(PT)$ is computed by enumerating all facts and types of objects in a triple.
+\item Then, we remove some \textit{<SPO>} triples such that the $PO$ is non-popular (line 14 - 18). For instance, \textit{actedIn(LionKingReturns)} is non-popular and can be deleted, but \textit{playsFor(ManchesterUnited)} should be kept in the new RDF data.
+\item Finally, from line $19$ to $28$, the algorithm focuses on selecting types for objects based on the solution proposed above. That is, for each \textit{<SPO>} triple, the algorithm takes care of $TOP\_K$ types for $PO$ pair. This is equivalent to projecting object $O$ to several types and adding the generated facts to the new RDF data.
 \end{itemize}
-
-The method is presented formally in the Algorithm~\ref{algo1}. In addition, the code for this method can be found on the Internet\footnote{\url{https://github.com/htran010589/rdf-generator/blob/master/src/imdb/AutoGenRdf.java}}.
 
 \begin{algorithm}
 \label{algo1}
 \caption{Predicate Projection Algorithm}
 
 \SetAlgoLined
-\KwData{$L$ as a list of $SPO$ triples}
-$R$ $\leftarrow$ empty list
+\KwData{Set $L$ of \textit{<SPO>} triples, $MIN\_FREQ,$\\$NOISE\_RATIO, TOP\_K$}
+$R$ $\leftarrow$ empty set
 
-\For{each $SPO$ triple from $L$} {
+\For{each \textit{<SPO>} triple from $L$} {
 	\If{$P$ is type predicate} {
 		add $O$ to the set of types for $P$
 	}
@@ -101,26 +101,26 @@ $R$ $\leftarrow$ empty list
 	$freq(P)++$  //  for predicate
 }
 
-\For{each $SPO$ triple from $L$} {
+\For{each \textit{<SPO>} triple from $L$} {
 	\For{each type $T$ from type set of $O$} {
 		$freq(PT)++$  //  for predicate-type pair
 	}
 }
 
-\For{each $SPO$ triple from $L$} {
+\For{each \textit{<SPO>} triple from $L$} {
 	\If{$freq(PO) > MIN\_FREQ$} {
 		add $SPO$ to $R$
 	}
 }
-\For{each $SPO$ triple from $L$} {
+\For{each \textit{<SPO>} triple from $L$} {
 
-	$TL$ $\leftarrow$ empty list
+	$TL$ $\leftarrow$ empty set
 
 	\For{each type $T$ from type set of $O$} {
 		$ratio(PT) \leftarrow freq(PT) / freq(P)$
 
 		\If{$ratio(PT) > NOISE\_RATIO$} {
-			add $T$ to type list $TL$
+			add $T$ to type set $TL$
 		}
 	}
 	sort types in $TL$ based on ascending order of predicate-type frequency
