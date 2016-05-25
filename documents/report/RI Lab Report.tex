@@ -34,7 +34,7 @@ Details of the main method are described in the next section. Finally, some futu
 
 So far we can see the benefits of predicate projection and naively using all types of objects can be the first solution. That is, one could create for every fact \textit{P(S, O)} a set of facts \textit{P$T_{i}$(O)} where \textit{$T_{i}$} is a type of $O$. However, this approach has some problems as follows:
 
-(i) Observe that in Example 1, \textit{BillGates} is a person's name, and a name of a movie about the person 's life story. It is unclear which exactly type can be used for abstracting a fact at hand, e.g, \textit{<Melinda marriedTo movie>} or \textit{<Melinda marriedTo person>}?
+(i) Observe that in Example 1, \textit{BillGates} is a person's name, and a name of a movie about the person 's life story. It is unclear which exactly type can be used for abstracting a fact at hand, e.g, \textit{<Melinda marriedTo movie>} or \textit{<Melinda marriedTo person>}? With the above naive solution, both of them are chosen in the new RDF data, however, the former does not make sense.
 
 (ii) In the Example, after projecting predicates with all types and mining rules, the output can be \textit{marriedToPerson($x$) $\leftarrow$ marriedToSinger($x$)}. This is a consequence of choosing a too general level of abstraction, which generates trivially true rules. Despite having very high confidence, they are not informative.
 
@@ -42,7 +42,7 @@ To deal with the described issues (i) and (ii), we propose the following method 
 
 \subsection{Predicate Projection Method}
 
-First, we focuse on how to solve the issue (ii). The intuition is that the more times a type appears, the more trivial it is. This is similar to term-frequency\footnote{\url{https://en.wikipedia.org/wiki/Tf-idf}} in Information Retrieval~\cite{ref2}, that is, trivial words like ``the", ``a", ``an", ... have high frequencies.
+First of all, we focuse on how to solve the issue (ii). The intuition is that the more times a type appears, the more trivial it is. This is similar to term-frequency\footnote{\url{https://en.wikipedia.org/wiki/Tf-idf}} in Information Retrieval~\cite{ref2}, that is, trivial words like ``the", ``a", ``an", ... have high frequencies.
 
 Applying this to the Example, \textit{marriedToPerson} has high frequency and can be filtered out using a fixed threshold $TOP\_K$. In details, when we sort all predicate-type pairs in increasing order of frequency after removing noises, we just get at most $TOP\_K$ types. More specifically, it is expected that $marriedToSinger$ has lower frequency than $marriedToPerson$, hence, has higher chance to be in $TOP\_K$.
 
@@ -177,7 +177,7 @@ Here $A_{i,j} = 1$ means $PO_{i}$ is covered by $P'O'_{j}$. It is easy to build 
 
 We want every pair $PO_{i}$ to be covered, that is: $\sum_{j=1}^{n}{x_{j} A_{i,j}} > 0$ $(\forall i \in [m])$ (3). Besides, the number of chosen predicate-type-pairs should not exceed the given parameter: $\sum_{j=1}^{n}{x_{j}} \leq MAX\_PT$ (4). In addition, since selected types should be informative, we should maximize an objective function $\sum_{j=1}^{n}{w_{j}}$ (5).
 
-From (3), (4), (5), a formal integer linear programming problem is modeled. However, since ILP is NP-hard, this approach is challenging; especially in case $m, n$ are large.
+From (3), (4), (5), a formal integer linear programming problem (ILP~\cite{ref1}) is modeled. This can be solved by using solution for size-constrained weighted set cover problem~\cite{ref3}.
 
 \bibliographystyle{abbrv}
 \bibliography{sigproc}
