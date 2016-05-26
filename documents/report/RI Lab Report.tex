@@ -15,12 +15,12 @@
 \alignauthor
 Hai Dang Tran\\Matriculation Number: 2557779
 }
-\date{17 January 2016}
+\date{26 January 2016}
 
 \maketitle
 
 \section{INTRODUCTION}
-This report proposes a predicate projection algorithm for an RDF\footnote{\url{https://en.wikipedia.org/wiki/Resource_Description_Framework}} graph. More specifically, given an RDF file containing a set of subject-predicate-object triples \textit{<SPO>}, the algorithm \textbf{selects types} for objects $O$ and uses these types for \textbf{projecting} binary facts to abstracted unary ones.
+This report proposes a predicate projection algorithm for an RDF\footnote{\url{https://en.wikipedia.org/wiki/Resource_Description_Framework}} graph. More specifically, given an RDF file containing a set of subject-predicate-object triples \textit{<SPO>}, the algorithm focuses on \textbf{selecting types} for objects $O$ and uses these types for \textbf{projecting} binary facts to abstracted unary ones.
 
 \textit{Example 1:} Consider a fragment of an RDF graph given as set of triples: \textit{<BillGates type person>, <BillGates type movie>, <Britney type singer>, <Britney type person>, <Melinda marriedTo BillGates>, <Kevin marriedTo Britney>, <Katy type singer>, <Katy type person>, <Brand marriedTo Katy>, <Kevin bornIn America>, <Brand bornIn America>}.
 
@@ -73,7 +73,7 @@ We are now ready to formally states the problem we are tackling in this work:
 
 \textbf{Given:} A set $L$ of \textit{<SPO>} triples, a real number $NOISE\_RATIO$, two integers $MIN\_FREQ$ and $TOP\_K$
 
-\textbf{Compute:} A set $R$ of unary facts $PO'(S)$ where $O' = O$ is an object and $freq(PO) > MIN\_FREQ$; or $O' = T$ is a type, and $T$ is in $TOP\_K$ types of a particular predicate-object pair $PO$.
+\textbf{Compute:} A set $R$ of unary facts $PO'(S)$ where $O' = O$ being an object and $freq(PO) > MIN\_FREQ$; or $O' = T$ being a type, and $T$ is in $TOP\_K$ types of a particular predicate-object pair $PO$.
 \end{framed}
 
 The Algorithm~\ref{algo1} which solves the presented problem, is now described in details, the code can be found on the Internet\footnote{\url{https://github.com/htran010589/rdf-generator/blob/master/src/imdb/AutoGenRdf.java}}. There are four steps in the proposed method:
@@ -173,9 +173,9 @@ Formally, some variables are defined as follows.
     \end{cases}
 \end{equation}
 
-Here $A_{i,j} = 1$ means $PO_{i}$ is covered by $P'O'_{j}$. It is easy to build binary matrix $A$ from given input.
+Here $A_{i,j} = 1$ means $PO_{i}$ is covered by $P'O'_{j}$, e.g, \textit{marriedToBritney} is covered by \textit{marriedToSinger}. It is easy to build binary matrix $A$ from given input.
 
-We want every pair $PO_{i}$ to be covered, that is: $\sum_{j=1}^{n}{x_{j} A_{i,j}} > 0$ $(\forall i \in [m])$ (3). Besides, the number of chosen predicate-type-pairs should not exceed the given parameter: $\sum_{j=1}^{n}{x_{j}} \leq MAX\_PT$ (4). In addition, since selected types should be informative, we should maximize an objective function $\sum_{j=1}^{n}{w_{j}}$ (5).
+We want every pair $PO_{i}$ to be covered, that is: $\sum_{j=1}^{n}{x_{j} A_{i,j}} > 0$ $(\forall i \in [m])$ (3). Besides, the number of chosen predicate-type-pairs should not exceed the given parameter: $\sum_{j=1}^{n}{x_{j}} \leq MAX\_PT$ (4). In addition, since selected types should be informative, we should maximize an objective function $\sum_{j=1}^{n}{w_{j}}$ (5). We need the parameter $MAX\_PT$, since without it, optimal solutions will choose infrequent predicate-type-pairs. As a consequence, hardly can they appear in the rule mining result.
 
 From (3), (4), (5), a formal integer linear programming problem (ILP~\cite{ref1}) is modeled. This can be solved by using solution for size-constrained weighted set cover problem~\cite{ref3}.
 
