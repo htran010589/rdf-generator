@@ -299,7 +299,7 @@ Our current approach assumes that the parameters are provided. Actually, the $TO
 
 \subsection{Choosing Types with Integer Linear Programming}
 
-In this proposed solution, we need one parameter $MAX\_PT$ instead of three ones mentioned above. The $MAX\_PT$ value is maximum number of predicate-type-pairs that can be selected from RDF data. Besides, assume that we have a tree of type hierarchy with each non-root node being subtype of its parent, e.g, $americanSinger$, $student$ are children of $singer$, $person$; respectively.
+In this proposed solution, we need one parameter $MAX\_PT$ instead of three ones mentioned above. The $MAX\_PT$ value is the maximum number of predicate-type-pairs that can be selected from RDF data. Besides, assume that we have a tree of type hierarchy with each non-root node being subtype of its parent, e.g, $americanSinger$, $student$ are children of $singer$, $person$; respectively.
 
 \textbf{Given:}
 
@@ -309,9 +309,9 @@ A set $L$ of triples \textit{<SPO>}, a tree of type hierarchy $TH$, an integer $
 
 Let $h(T)$ be the height of type $T$ in $TH$, that is, the distance from node $T$ to the root of the tree. The lower value $h(T)$ is, the more general and less informative type $T$ is, e.g, \textit{person, object} are not meaningful types.
 
-Discarding subject $S$ in each triple \textit{<SPO>} of $L$, we have a set of predicate-object-pairs $(PO)_{i}$ ($i \in [m]$). Besides, a set of predicate-type-pairs $(P'T')_{j}$ ($j \in [n]$) can be created from concatenating a predicate in $L$ and a type in $TH$.
+Discarding subject $S$ in each triple \textit{<SPO>} of $L$, we have a set of predicate-object-pairs $(PO)_{i}$ ($i \in [m]$). Besides, a set of predicate-type-pairs $(P'T')_{j}$ ($j \in [n]$) can be created by concatenating a predicate in $L$ and a type in $TH$.
 
-Let $P_{i}, O_{i}$ denote predicate and object in $(PO)_{i}$. Similar notations are created for $(P'O')_{j}$. Besides, let $w_{j} = w((P'T')_{j}) = h(T'_{j})$.
+Let $P_{i}, O_{i}$ denote a predicate and an object in $(PO)_{i}$. Similar notations are created for $(P'T')_{j}$. Besides, let $w_{j} = w((P'T')_{j}) = h(T'_{j})$.
 
 Formally, some variables are defined as follows.
 
@@ -331,9 +331,9 @@ Formally, some variables are defined as follows.
     \end{cases}
 \end{equation}
 
-Here $A_{i,j} = 1$ means $PO_{i}$ is covered by $P'O'_{j}$, e.g, \textit{marriedToBritney} is covered by \textit{marriedToSinger}. It is easy to build binary matrix $A$ from given input.
+Here $A_{i,j} = 1$ means $PO_{i}$ is covered by $P'T'_{j}$, e.g, \textit{marriedToBritney} is covered by \textit{marriedToSinger}. It is easy to build a binary matrix $A$ from a given input.
 
-We want every pair $PO_{i}$ to be covered, that is: $\sum_{j=1}^{n}{x_{j} A_{i,j}} > 0$ $(\forall i \in [m])$ (3). Besides, the number of chosen predicate-type-pairs should not exceed the given parameter: $\sum_{j=1}^{n}{x_{j}} \leq MAX\_PT$ (4). In addition, since selected types should be informative, we should maximize an objective function $\sum_{j=1}^{n}{w_{j}}$ (5). We need the parameter $MAX\_PT$, since without it, optimal solutions will choose infrequent predicate-type-pairs. As a consequence, hardly can they appear in the rule mining result.
+We want every pair $PO_{i}$ to be covered, that is: $\sum_{j=1}^{n}{x_{j} A_{i,j}} > 0$ $(\forall i \in [m])$ (3). Besides, the number of chosen predicate-type-pairs should not exceed the given parameter: $\sum_{j=1}^{n}{x_{j}} \leq MAX\_PT$ (4). In addition, since selected types should be informative, we should maximize the objective function $\sum_{j=1}^{n}{w_{j}}$ (5). We need the parameter $MAX\_PT$, since without it, optimal solutions will choose infrequent predicate-type-pairs. As a consequence, hardly can they appear in the rule mining result.
 
 From (3), (4), (5), a formal integer linear programming problem (ILP~\cite{ref1}) is modeled. This can be solved by using solution for size-constrained weighted set cover problem~\cite{ref3}.
 
