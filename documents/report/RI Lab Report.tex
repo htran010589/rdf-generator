@@ -24,46 +24,49 @@ This report proposes a predicate projection algorithm for an RDF\footnote{\url{h
 
 \textit{Example 1:} Consider a fragment of an RDF graph given as set of triples: \textit{<BillGates type person>, <BillGates type movie>, <Britney type singer>, <Britney type person>, <Melinda marriedTo BillGates>, <Kevin marriedTo Britney>, <Katy type singer>, <Katy type person>, <Brand marriedTo Katy>, <Kevin bornIn America>, <Brand bornIn America>}.
 
-Every such triple \textit{<SPO>} can be represented as \textit{P(S, O)} if \textit{P} is not \textit{type} (e.g. \textit{<Kevin marriedTo Britney>} can be seen as \textit{marriedTo(Kevin, Britney)}). Actually, usage of unary facts obtained from \textit{<S type O>} results in uninteresting rules due to the clean type hierarchy. The goal of the algorithm is to select a type of \textit{Britney}, e.g., \textit{singer} among all of the types of this entity, and, construct a unary fact, e.g, \textit{marriedToSinger(Kevin)}.
+Every such triple \textit{<SPO>} can be represented as \textit{P(S, O)} if \textit{P} is not \textit{type} (e.g. \textit{<Kevin marriedTo Britney>} can be seen as \textit{marriedTo(Kevin, Britney)}). The goal of the algorithm is to select a type of \textit{Britney}, e.g., \textit{singer} among all of the types of this entity, and, construct a unary fact, e.g, \textit{marriedToSinger(Kevin)}.
 
-Such projection approach is needed for creating datasets of unary facts that can be exploited for testing rule mining algorithm, e.g, checking an output of the method like \textit{bornInAmerica(x) $\leftarrow$ marriedToSinger(x)} makes sense or not. Straightforward creation of unary facts from binary ones, concatenates a given predicate $P$ in $P(S, O)$ and an object $O$, results in facts of the form $PO(S)$. These are normally very infrequent, e.g, in Example 1, \textit{marriedToBritney(Mat)} most probably is the only fact over the predicate \textit{marriedToBritney}.  To tackle this issue, we propose an approach which creates unary facts over predicates which can be fruitfully explored for rule mining.
+Such projection approach is needed for creating datasets of unary facts that can be exploited for testing rule mining algorithms, i.e, algorithms that return such patterns in the data as \textit{bornInAmerica(x) $\leftarrow$ marriedToSinger(x)}. Straightforward creation of unary facts from binary ones, concatenates a given predicate $P$ in $P(S, O)$ with an object $O$ which results in facts of the form $PO(S)$. These are normally very infrequent, e.g, in Example 1, \textit{marriedToBritney(Mat)} most probably is the only fact over the predicate \textit{marriedToBritney}.
+
+To tackle this issue, given an RDF graph we propose an approach which constructs unary facts over frequent predicates which can be fruitfully explored for rule mining.
 
 The details of our method are described in Section~\ref{section2}. Finally, future work directions are discussed in Section~\ref{section4}.
 
 \section{Projection Strategy}
 \label{section2}
 
-So far we can see the benefits of predicate projection and naively using all types of objects can be the first solution. That is, one could create for every fact \textit{P(S, O)} a set of facts \textit{P$T_{i}$(O)} where \textit{$T_{i}$} is a type of $O$. However, this approach has the following problem:
+So far we can see the benefits of predicate projection and the naive solution for projecting binary facts to unary is to use all types of objects. That is, one could create for every fact \textit{P(S, O)} a set of facts \textit{P$T_{i}$(O)} where \textit{$T_{i}$} is a type of $O$. However, this approach has the following problem:
 
-In the Example, after projecting predicates with all types and mining rules, the output can be \textit{marriedToPerson($x$) $\leftarrow$ marriedToSinger($x$)}. This is a consequence of choosing a too general level of abstraction, which generates trivially true rules. Despite having very high confidence, they are not informative.
+In the Example, after projecting predicates with all types and mining rules, the output can be \textit{marriedToPerson($x$) $\leftarrow$ marriedToSinger($x$)}. This is a consequence of choosing a too general level of abstraction, which generates rules that do not provide additional information to us. Despite having very high confidence, they are not informative.
 
-To deal with the described issues (i) and (ii), we propose the following method for identifying appropriate types.
+To deal with the described issue, we propose a novel projection method which is described in what follows.
 
 \subsection{Predicate Projection Method}
+\label{section21}
 
-First of all, we focuse on how to solve the issue (ii). The intuition is that the more times a type appears, the more trivial it is. This is similar to term-frequency\footnote{\url{https://en.wikipedia.org/wiki/Tf-idf}} in Information Retrieval~\cite{ref2}, that is, trivial words like ``the", ``a", ``an", ... have high frequencies.
+First of all, we describe our solution to the issue. The intuition is that the more times a type appears, the less meaningful it is. This is similar to term-frequency\footnote{\url{https://en.wikipedia.org/wiki/Tf-idf}} in Information Retrieval~\cite{ref2}, that is, trivial words like ``the", ``a", ``an", ... have high frequencies.
 
-Applying this to the Example, \textit{marriedToPerson} has high frequency and can be filtered out using a fixed threshold $TOP\_K$. In details, when we sort all predicate-type pairs in increasing order of frequency after removing noises, we just get at most $TOP\_K$ types. More specifically, it is expected that $marriedToSinger$ has lower frequency than $marriedToPerson$, hence, has higher chance to be in $TOP\_K$.
+Applying this intuition to Example 1, \textit{marriedToPerson} has high frequency and can be filtered out using a fixed threshold $TOP\_K$. In details, when we sort all predicate-type pairs in increasing order of frequency after removing noises, we just get at most $TOP\_K$ types. More specifically, it is expected that $marriedToSinger$ has lower frequency than $marriedToPerson$, hence, has higher chance to be in $TOP\_K$.
 
-The problem that we are tackling in this work and its solution are formally presented after introducing some supporting definitions.
+Before introducing the problem and our solution to it formally, we present some necessary definitions.
 
 \textbf{Definition 1 (Predicate Frequency):} Given a set $L$ of \textit{<SPO>} triples, $freq(P)$ is the number of triples in $L$ containing $P$ as a predicate.
 
-In Example 1, we have $freq(type) = 6$ and $freq(marriedTo)\\ = 3$.
+Example 2: In Example 1, we have $freq(type) = 6$ and $freq(marriedTo)\\ = 3$.
 
 \textbf{Definition 2 (Predicate-Object Frequency):} Given a set $L$ of \textit{<SPO>} triples, $freq(PO)$ is the number of triples in $L$ containing $P$ as a predicate and $O$ as an object. If $freq(PO) < MIN\_FREQ$ which is a chosen integer threshold, then $PO$ is called non-popular.
 
-In Example 1, $freq(typePerson) = 3$ since there are three triples containing \textit{type} and \textit{person}. Similarly, $freq(married\\ToBillGates) = 1$ and $freq(bornInAmerica) = 2$, thus, if $MIN\_FREQ = 2$, then \textit{marriedToBillGates} is not popular pair.
+Example 3: In Example 1, $freq(typePerson) = 3$ since there are three triples containing \textit{type} and \textit{person}. Similarly, $freq(married\\ToBillGates) = 1$ and $freq(bornInAmerica) = 2$, thus, if $MIN\_FREQ = 2$, then \textit{marriedToBillGates} is non-popular pair.
 
 \textbf{Definition 3 (Predicate-Type Frequency and Ratio):} Given a set $L$ of \textit{<SPO>} triples, $freq(PT)$ is the number of triples in $L$ containing $P$ as a predicate and $O$ as an object of type $T$. Besides, $ratio(PT) = freq(PT) / freq(P)$. $PT$ is called a noise if $ratio(PT) < NOISE\_RATIO$ which is a specified real threshold.
 
-In Example 1, we have $freq(marriedToSinger) = 2$, $ratio\\(marriedToMovie) = 1 / 3$ and $ratio(marriedToPerson) = 3 / 3 = 1$.
+Example 4: In Example 1, we have $freq(marriedToSinger) = 2$, $ratio\\(marriedToMovie) = 1 / 3$ and $ratio(marriedToPerson) = 3 / 3 = 1$.
 
 Observe that $ratio(marriedToMovie)$ can be very small in the real world data, and, \textit{movie} can be detected as noise for predicate \textit{marriedTo}. This observation motivates us to filter type noises based on ratio measure. That is, we take care of a predicate-type pair if its ratio is greater than a threshold $NOISE\_RATIO$, otherwise we drop it. This helps to solve the first problem mentioned in (i).
 
-\textbf{Definition 4 (\textit{TOP\_K} Types of a Predicate-Object Pair):} Given a predicate-object pair $PO$, $TOP\_K$ types of $PO$ is $TOP\_K$ types $T_{i}$ for which predicate-type frequency $freq(PT_{i})$ is the lowest.
+\textbf{Definition 4 (\textit{TOP\_K} Types of a Predicate-Object Pair):} Given a predicate-object pair $PO$, $TOP\_K$ types of $PO$ is $TOP\_K$ types $T_{i}$ for which predicate-type frequency $freq(PT_{i})$ is the lowest, $PT_{i}$ is popular and not noise.
 
-For instance, $TOP\_2$ of \textit{marriedToBritney} is \{\textit{singer, person}\} in Example 1.
+Example 5: For instance, if $MIN\_FREQ = 2, NOISE\_\\RATIO = 2 / 3, TOP\_K = 1$ then the selected type for \textit{marriedToBritney} is \{\textit{singer}\} in Example 1.
 
 We are now ready to formally state the problem we are tackling in this work:
 
@@ -77,10 +80,10 @@ We are now ready to formally state the problem we are tackling in this work:
 
 The Algorithm~\ref{algo1} which solves the presented problem, is now described in details. The code can be found on the Internet\footnote{\url{https://github.com/htran010589/rdf-generator/blob/master/src/imdb/AutoGenRdf.java}}. There are four steps in the proposed method:
 \begin{itemize}
-\item First, based on facts containing type predicate, a set of possible types for each object is found. In addition, $freq(PO)$ and $freq(O)$ are calculated for all triples in $L$ (line 2 - 8).
+\item First, for each triple containing type predicate, i.e \textit{<O type T>}, a set of possible types $T$ for each object $O$ is found. In addition, $freq(PO)$ and $freq(O)$ are calculated for all triples in $L$ (line 2 - 8).
 \item After that, $freq(PT)$ is computed by enumerating all facts and types of objects in a triple.
-\item Then, we remove some \textit{<SPO>} triples such that the $PO$ is non-popular (line 14 - 18). For instance, based on Definition 2 above, \textit{bornInAmerica} should be kept in the new RDF data, but \textit{marriedToBillGates} is non-popular and can be dropped.
-\item Finally, from line $19$ to $28$, the algorithm focuses on selecting types for objects based on the solution proposed in the formal problem statement above. That is, for each \textit{<SPO>} triple, the algorithm computes $ratio(PT)$ with each $T$ being a type of object $O$ and store non noise pair $PT$ to a set $TL$. After that, we find $TOP\_K$ types $T_{i}$ from $TL$ with lowest $freq(PT_{i})$. Then, the object $O$ is replaced by these $T_{i}$ and new facts are added to $R$. More specifically, if \textit{<Brand marriedTo Katy>} is processed, it will be replaced by \textit{marriedToSinger(Brand)} in the output.
+\item Then, we remove \textit{<SPO>} triples such that the $PO$ is non-popular (line 14 - 18). For instance, based on Definition 2 above, \textit{bornInAmerica} should be kept in the new RDF data, but \textit{marriedToBillGates} is non-popular and can be dropped.
+\item Finally, from line $19$ to $28$, the algorithm focuses on selecting types for objects based on ranking frequency of predicate-type pair. In details, for each \textit{<SPO>} triple, the algorithm computes $ratio(PT)$ with each $T$ being a type of object $O$ and stores non noise pair $PT$ into a set $TL$. After that, we find $TOP\_K$ types $T_{i}$ from $TL$ with lowest $freq(PT_{i})$. Then, the object $O$ is replaced by these $T_{i}$ and new facts are added to $R$. More specifically, if parameters are fixed as in Example 5, \textit{<Kevin marriedTo Britney>} will be replaced by \textit{marriedToSinger(Kevin)} in the output.
 \end{itemize}
 
 \begin{algorithm}
@@ -132,180 +135,11 @@ $R$ $\leftarrow$ empty set
 
 \end{algorithm}
 
-\section{Statistics}
-
-\subsection{Frequent Itemsets}
-
-This is for IMDB data:
-
-\begin{center}
-\begin{tabular}{ |c|c|c|c| } 
-\hline
- & Type Facts & Projection & Abstraction\\
-\hline
-0.003 & 1057 & 2443 & 6944 \\
-0.006 & 353 & 837 & 1854 \\
-0.009 & 175 & 416 & 836 \\
-0.012 & 115 & 269 & 585 \\
-0.015 & 91 & 194 & 526 \\
-\hline
-\end{tabular}
-\end{center}
-
-This is for football YAGO data:
-
-\begin{center}
-\begin{tabular}{ |c|c|c|c| } 
-\hline
- & Type Facts & Projection & Abstraction\\
-\hline
-0.003 & 610 & 724 & 243711 \\
-0.006 & 184 & 314 & 23191 \\
-0.009 & 106 & 278 & 6256 \\
-0.012 & 85 & 241 & 5343 \\
-0.015 & 47 & 185 & 4587 \\
-\hline
-\end{tabular}
-\end{center}
-
-\subsection{Top Frequent Predicate Pairs}
-
-This is for original IMDB data:
-
-\begin{center}
-\begin{tabular}{ |p{6cm}|p{1.5cm}| } 
-\hline
-Predicate Pair & Frequency\\
-\hline
-\textit{type(wordnet movie 106613686), hasProductionLanguage(English language)} & 11450 \\
-\hline
-\textit{type(wordnet movie 106613686), type(wikicat English language films)} & 8654 \\
-\hline
-\textit{type(wordnet movie 106613686), type(wikicat American films)} & 8282 \\
-\hline
-\textit{type(wikicat English language films), hasProductionLanguage(English language)} & 6446 \\
-\hline
-\textit{hasLanguage(English), producedIn(USA)} & 6316 \\
-\hline
-\textit{type(wikicat American films), type(wikicat English language films)} & 6081 \\
-\hline
-\textit{type(wordnet movie 106613686), hasLanguage(English)} & 5894 \\
-\hline
-\textit{type(wikicat American films), hasProductionLanguage(English language)} & 5735 \\
-\hline
-\textit{type(wordnet movie 106613686), producedIn(USA)} & 5629 \\
-\hline
-\textit{type(wikicat Living people), type(wordnet actor 109765278)} & 4931 \\
-\hline
-\end{tabular}
-\end{center}
-
-This is for IMDB data after abstracting:
-
-\begin{center}
-\begin{tabular}{ |p{6cm}|p{1.5cm}| } 
-\hline
-Predicate Pair & Frequency\\
-\hline
-\textit{hasProductionLanguage(English language), hasProductionLanguage(wikicat Languages of American Samoa)} & 11669 \\
-\hline
-\textit{hasProductionLanguage(English language), hasProductionLanguage(wikicat Languages of Australia)} & 11669 \\
-\hline
-\textit{hasProductionLanguage(English language), hasProductionLanguage(wikicat Languages of Fiji)} & 11669 \\
-\hline
-\textit{hasProductionLanguage(wikicat Languages of American Samoa), hasProductionLanguage(wikicat Languages of Australia)} & 11669 \\
-\hline
-\textit{hasProductionLanguage(wikicat Languages of American Samoa), hasProductionLanguage(wikicat Languages of Fiji)} & 11669 \\
-\hline
-\textit{hasProductionLanguage(wikicat Languages of Australia), hasProductionLanguage(wikicat Languages of Fiji)} & 11669 \\
-\hline
-\textit{hasLanguage(English), producedIn(USA)} & 6322 \\
-\hline
-\textit{hasLanguage(English), hasProductionLanguage(English language)} & 3805 \\
-\hline
-\textit{hasLanguage(English), hasProductionLanguage(wikicat Languages of American Samoa)} & 3805 \\
-\hline
-\textit{hasLanguage(English), hasProductionLanguage(wikicat Languages of Australia)} & 3805 \\
-\hline
-\end{tabular}
-\end{center}
-
-This is for original football YAGO data:
-
-\begin{center}
-\begin{tabular}{ |p{6cm}|p{1.5cm}| } 
-\hline
-Predicate Pair & Frequency\\
-\hline
-\textit{hasGender(male), isAffiliatedTo(England national football team)} & 879 \\
-\hline
-\textit{hasGender(male), playsFor(England national football team)} & 787 \\
-\hline
-\textit{hasGender(male), playsFor(Manchester United F.C.)} & 784 \\
-\hline
-\textit{hasGender(male), playsFor(Manchester City F.C.)} & 766 \\
-\hline
-\textit{playsFor(England national football team), isAffiliatedTo(England national football team)} & 760 \\
-\hline
-\textit{hasGender(male), playsFor(Tottenham Hotspur F.C.)} & 752 \\
-\hline
-\textit{hasGender(male), playsFor(Arsenal F.C.)} & 743 \\
-\hline
-\textit{hasGender(male), isAffiliatedTo(Manchester United F.C.)} & 691 \\
-\hline
-\textit{playsFor(Manchester United F.C.), isAffiliatedTo(Manchester United F.C.)} & 691 \\
-\hline
-\textit{hasGender(male), playsFor(Everton F.C.)} & 667 \\
-\hline
-\end{tabular}
-\end{center}
-
-This is for football YAGO data after abstracting:
-
-\begin{center}
-\begin{tabular}{ |p{6cm}|p{1.5cm}| } 
-\hline
-Predicate Pair & Frequency\\
-\hline
-\textit{hasGender(male), isAffiliatedTo(wikicat European national association football teams)} & 2099 \\
-\hline
-\textit{hasGender(male), playsFor(wikicat European national association football teams)} & 1906 \\
-\hline
-\textit{isAffiliatedTo(wikicat European national association football teams), playsFor(wikicat European national association football teams)} & 1687 \\
-\hline
-\textit{hasGender(male), playsFor(wikicat Football clubs in London)} & 1350 \\
-\hline
-\textit{hasGender(male), playsFor(wikicat Football clubs in Lombardy)} & 1139 \\
-\hline
-\textit{hasGender(male), isAffiliatedTo(wikicat Football clubs in London)} & 1095 \\
-\hline
-\textit{playsFor(wikicat Football clubs in London), isAffiliatedTo(wikicat Football clubs in London)} & 1086 \\
-\hline
-\textit{isAffiliatedTo(England national football team), isAffiliatedTo(wikicat Men's national sports teams of England)} & 917 \\
-\hline
-\textit{isAffiliatedTo(England national football team), isAffiliatedTo(wikicat National sports teams of England)} & 917 \\
-\hline
-\textit{isAffiliatedTo(wikicat Men's national sports teams of England), isAffiliatedTo(wikicat National sports teams of England)} & 917 \\
-\hline
-\end{tabular}
-\end{center}
-
-\section{Future Work}
-\label{section4}
-
-There are several directions for improvement of the proposed method. There is a direction that, the mentioned problems can be resolved easier by the user once the domain is narrowed. Indeed, since the domain is fixed, the number of predicates can be not too large, and based on experiments we can set some parameters empirically. Besides, instead of manually chosen relations, we can mine and cluster them to different groups. Hence, choosing suitable types to project for each group of relations can be taken into account.
-
-Our current approach assumes that the parameters are provided. Actually, the $TOP\_K$ parameter can be different for different predicates and domains while it is fixed in the main method. Thus, choosing the parameters automatically for open domain is an open problem, which needs to be further studied. In the rest of this report, we model the predicate projection problem using ILP.
+The Algorithm~\ref{algo1} assumes that the parameters are provided. Actually, the $TOP\_K$ parameter can be different for different predicates and domains while it is fixed in the main method. Thus, choosing the parameters automatically for open domain is an open problem, which needs to be further studied. In the next section, we model the predicate projection problem using ILP~\cite{ref1}.
 
 \subsection{Choosing Types with Integer Linear Programming}
 
-In this proposed solution, we need one parameter $MAX\_PT$ instead of three ones mentioned above. The $MAX\_PT$ value is the maximum number of predicate-type-pairs that can be selected from RDF data. Besides, assume that we have a tree of type hierarchy with each non-root node being subtype of its parent, e.g, $americanSinger$, $student$ are children of $singer$, $person$; respectively.
-
-\textbf{Given:}
-
-A set $L$ of triples \textit{<SPO>}, a tree of type hierarchy $TH$, an integer $MAX\_PT$.
-
-\textbf{Solution:}
+In this proposed solution, we need one parameter $MAX\_PT$ instead of three ones mentioned above. The $MAX\_PT$ value is the maximum number of predicate-type-pairs that can be selected from RDF data. Besides, assume that we have a tree of type hierarchy $TH$ with each non-root node being subtype of its parent, e.g, $americanSinger$, $student$ are children of $singer$, $person$; respectively. In details, the solution can be described as follows.
 
 Let $h(T)$ be the height of type $T$ in $TH$, that is, the distance from node $T$ to the root of the tree. The lower value $h(T)$ is, the more general and less informative type $T$ is, e.g, \textit{person, object} are not meaningful types.
 
@@ -335,7 +169,190 @@ Here $A_{i,j} = 1$ means $PO_{i}$ is covered by $P'T'_{j}$, e.g, \textit{married
 
 We want every pair $PO_{i}$ to be covered, that is: $\sum_{j=1}^{n}{x_{j} A_{i,j}} > 0$ $(\forall i \in [m])$ (3). Besides, the number of chosen predicate-type-pairs should not exceed the given parameter: $\sum_{j=1}^{n}{x_{j}} \leq MAX\_PT$ (4). In addition, since selected types should be informative, we should maximize the objective function $\sum_{j=1}^{n}{w_{j}}$ (5). We need the parameter $MAX\_PT$, since without it, optimal solutions will choose infrequent predicate-type-pairs. As a consequence, hardly can they appear in the rule mining result.
 
-From (3), (4), (5), a formal integer linear programming problem (ILP~\cite{ref1}) is modeled. This can be solved by using solution for size-constrained weighted set cover problem~\cite{ref3}.
+From (3), (4), (5), a formal integer linear programming problem (ILP) is modeled. This can be solved by using solution for size-constrained weighted set cover problem~\cite{ref3}.
+
+\section{Statistics}
+
+\subsection{Frequent Itemsets}
+
+In this section we count number of frequent itemsets corresponding to different minimum supports (from $0.003 - 0.015$), two domains (IMDB and football YAGO) and three methods. The first method is to select only triples that contain \textit{type} predicate, the second one projects all facts from original data to unary forms. Also, the third one selects the output after using the current work in Section~\ref{section21} as data abstraction.
+
+It is shown in Table~\ref{table1} and~\ref{table2} that the number of frequent itemsets after abstraction is much larger than the first two methods. This is a result of making the RDF graph denser by abstracting data.
+
+\begin{table}[ht]
+\label{table1}
+\caption{Number of frequent itemsets in IMDB data.}
+\begin{center}
+\begin{tabular}{ |c|c|c|c| } 
+\hline
+ & Type Facts & Projection & Abstraction\\
+\hline
+0.003 & 1057 & 2443 & 6944 \\
+0.006 & 353 & 837 & 1854 \\
+0.009 & 175 & 416 & 836 \\
+0.012 & 115 & 269 & 585 \\
+0.015 & 91 & 194 & 526 \\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+\begin{table}[ht]
+\caption{Number of frequent itemsets in football YAGO data.}
+\label{table2}
+\begin{center}
+\begin{tabular}{ |c|c|c|c| } 
+\hline
+ & Type Facts & Projection & Abstraction\\
+\hline
+0.003 & 610 & 724 & 243711 \\
+0.006 & 184 & 314 & 23191 \\
+0.009 & 106 & 278 & 6256 \\
+0.012 & 85 & 241 & 5343 \\
+0.015 & 47 & 185 & 4587 \\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+\subsection{Top Frequent Unary Predicate Pairs}
+
+In addition, we also take care top unary predicate pairs with highest frequencies, the frequency means the number of common subjects between two unary predicates. For each dataset before and after abstraction (from two domains, IMDB and football YAGO), top $10$ pairs are calculated and compared to each other. It is expected that frequencies corresponding data after abstraction are larger than in original one.
+
+Indeed, as regards IMDB data, top frequencies in Table~\ref{table4} are larger than in Table~\ref{table3}. This contrast can be seen more clearly in Table~\ref{table5},~\ref{table6} w.r.t football YAGO data.
+
+\begin{table}
+\caption{Top predicate pairs in IMDB data before abstracting.}
+\label{table3}
+\begin{center}
+\begin{tabular}{ |p{6cm}|p{1.5cm}| } 
+\hline
+Predicate Pair & Frequency\\
+\hline
+\textit{type(wordnet movie 106613686), hasProductionLanguage(English language)} & 11450 \\
+\hline
+\textit{type(wordnet movie 106613686), type(wikicat English language films)} & 8654 \\
+\hline
+\textit{type(wordnet movie 106613686), type(wikicat American films)} & 8282 \\
+\hline
+\textit{type(wikicat English language films), hasProductionLanguage(English language)} & 6446 \\
+\hline
+\textit{hasLanguage(English), producedIn(USA)} & 6316 \\
+\hline
+\textit{type(wikicat American films), type(wikicat English language films)} & 6081 \\
+\hline
+\textit{type(wordnet movie 106613686), hasLanguage(English)} & 5894 \\
+\hline
+\textit{type(wikicat American films), hasProductionLanguage(English language)} & 5735 \\
+\hline
+\textit{type(wordnet movie 106613686), producedIn(USA)} & 5629 \\
+\hline
+\textit{type(wikicat Living people), type(wordnet actor 109765278)} & 4931 \\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+\begin{table}
+\caption{Top predicate pairs in IMDB data after abstracting.}
+\label{table4}
+\begin{center}
+\begin{tabular}{ |p{6cm}|p{1.5cm}| } 
+\hline
+Predicate Pair & Frequency\\
+\hline
+\textit{hasProductionLanguage(English language), hasProductionLanguage(wikicat Languages of American Samoa)} & 11669 \\
+\hline
+\textit{hasProductionLanguage(English language), hasProductionLanguage(wikicat Languages of Australia)} & 11669 \\
+\hline
+\textit{hasProductionLanguage(English language), hasProductionLanguage(wikicat Languages of Fiji)} & 11669 \\
+\hline
+\textit{hasProductionLanguage(wikicat Languages of American Samoa), hasProductionLanguage(wikicat Languages of Australia)} & 11669 \\
+\hline
+\textit{hasProductionLanguage(wikicat Languages of American Samoa), hasProductionLanguage(wikicat Languages of Fiji)} & 11669 \\
+\hline
+\textit{hasProductionLanguage(wikicat Languages of Australia), hasProductionLanguage(wikicat Languages of Fiji)} & 11669 \\
+\hline
+\textit{hasLanguage(English), producedIn(USA)} & 6322 \\
+\hline
+\textit{hasLanguage(English), hasProductionLanguage(English language)} & 3805 \\
+\hline
+\textit{hasLanguage(English), hasProductionLanguage(wikicat Languages of American Samoa)} & 3805 \\
+\hline
+\textit{hasLanguage(English), hasProductionLanguage(wikicat Languages of Australia)} & 3805 \\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+\begin{table}[ht]
+\caption{Top predicate pairs in football YAGO data before abstracting.}
+\label{table5}
+\begin{center}
+\begin{tabular}{ |p{6cm}|p{1.5cm}| } 
+\hline
+Predicate Pair & Frequency\\
+\hline
+\textit{hasGender(male), isAffiliatedTo(England national football team)} & 879 \\
+\hline
+\textit{hasGender(male), playsFor(England national football team)} & 787 \\
+\hline
+\textit{hasGender(male), playsFor(Manchester United F.C.)} & 784 \\
+\hline
+\textit{hasGender(male), playsFor(Manchester City F.C.)} & 766 \\
+\hline
+\textit{playsFor(England national football team), isAffiliatedTo(England national football team)} & 760 \\
+\hline
+\textit{hasGender(male), playsFor(Tottenham Hotspur F.C.)} & 752 \\
+\hline
+\textit{hasGender(male), playsFor(Arsenal F.C.)} & 743 \\
+\hline
+\textit{hasGender(male), isAffiliatedTo(Manchester United F.C.)} & 691 \\
+\hline
+\textit{playsFor(Manchester United F.C.), isAffiliatedTo(Manchester United F.C.)} & 691 \\
+\hline
+\textit{hasGender(male), playsFor(Everton F.C.)} & 667 \\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+\begin{table}[ht]
+\caption{Top predicate pairs in football YAGO data after abstracting.}
+\label{table6}
+\begin{center}
+\begin{tabular}{ |p{6cm}|p{1.5cm}| } 
+\hline
+Predicate Pair & Frequency\\
+\hline
+\textit{hasGender(male), isAffiliatedTo(wikicat European national association football teams)} & 2099 \\
+\hline
+\textit{hasGender(male), playsFor(wikicat European national association football teams)} & 1906 \\
+\hline
+\textit{isAffiliatedTo(wikicat European national association football teams), playsFor(wikicat European national association football teams)} & 1687 \\
+\hline
+\textit{hasGender(male), playsFor(wikicat Football clubs in London)} & 1350 \\
+\hline
+\textit{hasGender(male), playsFor(wikicat Football clubs in Lombardy)} & 1139 \\
+\hline
+\textit{hasGender(male), isAffiliatedTo(wikicat Football clubs in London)} & 1095 \\
+\hline
+\textit{playsFor(wikicat Football clubs in London), isAffiliatedTo(wikicat Football clubs in London)} & 1086 \\
+\hline
+\textit{isAffiliatedTo(England national football team), isAffiliatedTo(wikicat Men's national sports teams of England)} & 917 \\
+\hline
+\textit{isAffiliatedTo(England national football team), isAffiliatedTo(wikicat National sports teams of England)} & 917 \\
+\hline
+\textit{isAffiliatedTo(wikicat Men's national sports teams of England), isAffiliatedTo(wikicat National sports teams of England)} & 917 \\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+\section{Future Work}
+\label{section4}
+
+There is a direction for improvement of the proposed method , that is, the mentioned problems can be resolved easier once the domain is narrowed. Indeed, since the domain is fixed, the number of predicates should not be too large, and based on experiments we can set some parameters empirically. Besides, instead of manually chosen relations such as \textit{marriedTo, bornIn}, we can mine and cluster them into different groups. Hence, suitable type projection for each group of relations can be taken into account.
 
 \bibliographystyle{abbrv}
 \bibliography{sigproc}
