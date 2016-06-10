@@ -6,10 +6,15 @@
 \usepackage{url}
 \usepackage{framed}
 \usepackage[vlined,linesnumbered]{algorithm2e}
+\usepackage{amsmath}
+
+\newcounter{example}[section]
+\newenvironment{example}[1][]{\refstepcounter{example}\par\medskip
+   \noindent \textbf{Example~\theexample. #1} \rmfamily}{\medskip}
 
 \begin{document}
 
-\title{Projection of Binary Predicates}
+\title{Abstraction of Binary Predicates}
 \numberofauthors{1}
 \author{
 \alignauthor
@@ -20,60 +25,65 @@ Hai Dang Tran\\Matriculation Number: 2557779
 \maketitle
 
 \section{INTRODUCTION}
-This report proposes a predicate projection algorithm for an RDF\footnote{\url{https://en.wikipedia.org/wiki/Resource_Description_Framework}} graph. More specifically, given an RDF file containing a set of subject-predicate-object triples \textit{<SPO>}, the algorithm focuses on \textbf{selecting types} for objects $O$ and uses these types for \textbf{projecting} binary facts to abstracted unary ones.
+This report proposes a predicate abstraction algorithm for an RDF\footnote{\url{https://en.wikipedia.org/wiki/Resource_Description_Framework}} graph. More specifically, given an RDF file containing a set of subject-predicate-object triples \textit{<SPO>}, the algorithm focuses on \textbf{selecting types} for objects $O$ and uses these types for \textbf{abstracting} binary facts to unary ones.
 
-\textit{Example 1:} Consider a fragment of an RDF graph given as set of triples: \textit{<BillGates type person>, <BillGates type movie>, <Britney type singer>, <Britney type person>, <Melinda marriedTo BillGates>, <Kevin marriedTo Britney>, <Katy type singer>, <Katy type person>, <Brand marriedTo Katy>, <Kevin bornIn America>, <Brand bornIn America>}.
+\begin{example}
+\label{ex1}
+Consider a fragment of an RDF graph given as a set of triples: \textit{<BillGates type person>, <BillGates type millionaire>, <Britney type singer>, <Britney type person>, <Melinda marriedTo BillGates>, <Kevin marriedTo Britney>, <Katy type singer>, <Katy type person>, <Brand marriedTo Katy>, <Kevin bornIn America>, <Brand bornIn America>}.
+\end{example}
 
-Every such triple \textit{<SPO>} can be represented as \textit{P(S, O)} if \textit{P} is not \textit{type} (e.g. \textit{<Kevin marriedTo Britney>} can be seen as \textit{marriedTo(Kevin, Britney)}). The goal of the algorithm is to select a type of \textit{Britney}, e.g., \textit{singer} among all of the types of this entity, and, construct a unary fact, e.g, \textit{marriedToSinger(Kevin)}.
+Every such triple \textit{<SPO>} can be represented as a binary fact \textit{P(S, O)} if \textit{P} is not \textit{type} and a unary fact \textit{O(S)} otherwise (e.g. \textit{<Kevin marriedTo Britney>, <BillGates type person>} can be seen as \textit{marriedTo(Kevin, Britney)} and \textit{person(BillGates)}, respectively). The goal of the algorithm is to select a type of \textit{Britney}, e.g., \textit{singer} among all of the types of this entity, and, construct a unary fact, e.g, \textit{marriedToSinger(Kevin)}.
 
-Such projection approach is needed for creating datasets of unary facts that can be exploited for testing rule mining algorithms, i.e, algorithms that return such patterns in the data as \textit{bornInAmerica(x) $\leftarrow$ marriedToSinger(x)}. Straightforward creation of unary facts from binary ones, concatenates a given predicate $P$ in $P(S, O)$ with an object $O$ which results in facts of the form $PO(S)$. These are normally very infrequent, e.g, in Example 1, \textit{marriedToBritney(Mat)} most probably is the only fact over the predicate \textit{marriedToBritney}.
+Such abstraction approach is needed for creating datasets of unary facts that can be exploited for testing rule mining algorithms, i.e, algorithms that return such patterns in the data as \textit{bornInAmerica(x) $\leftarrow$ marriedToSinger(x)}.
+
+Observe that the usage of unary facts obtained from \textit{<S type O>} results in uninteresting rules due to the clean type hierarchy. Furthermore, straightforward creation of unary facts from binary ones by concatenating a given predicate $P$ in $P(S, O)$ with an object $O$ results in facts of the form $PO(S)$, which are normally very infrequent. E.g, in Example 1, \textit{marriedToBritney(Kevin)} most probably is the only fact over the predicate \textit{marriedToBritney}.
 
 To tackle this issue, given an RDF graph we propose an approach which constructs unary facts over frequent predicates which can be fruitfully explored for rule mining.
 
-The details of our method are described in Section~\ref{section2}. Finally, future work directions are discussed in Section~\ref{section4}.
+The details of our method are described in Section~\ref{section2}. Experimental evaluation of our techniques is given in Section~\ref{section3}. Future work directions are discussed in Section~\ref{section4}.
 
-\section{Projection Strategy}
+\section{Abstraction Strategy}
 \label{section2}
 
-So far we can see the benefits of predicate projection and the naive solution for projecting binary facts to unary is to use all types of objects. That is, one could create for every fact \textit{P(S, O)} a set of facts \textit{P$T_{i}$(O)} where \textit{$T_{i}$} is a type of $O$. However, this approach has the following problem:
+The naive solution for abstracting binary facts to unary is to use all types of objects. That is, one could create for every fact \textit{P(S, O)} a set of facts \textit{P$T_{i}$(O)}, where \textit{$T_{i}$} is a type of $O$. However, this approach has the following problem:
 
-In the Example, after projecting predicates with all types and mining rules, the output can be \textit{marriedToPerson($x$) $\leftarrow$ marriedToSinger($x$)}. This is a consequence of choosing a too general level of abstraction, which generates rules that do not provide additional information to us. Despite having very high confidence, they are not informative.
+In Example 1, after abstracting predicates with all types and mining rules, the output can be \textit{marriedToPerson($x$) $\leftarrow$ marriedToSinger($x$)}. This is a consequence of choosing a too general level of abstraction, which generates rules that do not provide additional information to us. Despite having very high confidence, they are not informative.
 
-To deal with the described issue, we propose a novel projection method which is described in what follows.
+To deal with the described issue, we propose a novel abstraction method which is described in what follows.
 
-\subsection{Predicate Projection Method}
+\subsection{Predicate Abstraction with TOP\_K}
 \label{section21}
 
-First of all, we describe our solution to the issue. The intuition is that the more times a type appears, the less meaningful it is. This is similar to term-frequency\footnote{\url{https://en.wikipedia.org/wiki/Tf-idf}} in Information Retrieval~\cite{ref2}, that is, trivial words like ``the", ``a", ``an", ... have high frequencies.
+First of all, we describe our solution to the issue. The intuition is that the more times a type appears, the less informative it is. This is similar to term-frequency\footnote{\url{https://en.wikipedia.org/wiki/Tf-idf}} in Information Retrieval~\cite{ref2}, that is, trivial words like ``the", ``a", ``an", ... have high frequencies.
 
-Applying this intuition to Example 1, \textit{marriedToPerson} has high frequency and can be filtered out using a fixed threshold $TOP\_K$. In details, when we sort all predicate-type pairs in increasing order of frequency after removing noises, we just get at most $TOP\_K$ types. More specifically, it is expected that $marriedToSinger$ has lower frequency than $marriedToPerson$, hence, has higher chance to be in $TOP\_K$.
+Applying this intuition to Example 1, \textit{marriedToPerson} has high frequency and can be filtered out using a fixed threshold $TOP\_K$. In details, when we sort all predicate-type pairs in increasing order of frequency, we just get at most $TOP\_K$ types. More specifically, it is expected that $marriedToSinger$ has lower frequency than $marriedToPerson$, hence, has higher chance to be in $TOP\_K$.
 
 Before introducing the problem and our solution to it formally, we present some necessary definitions.
 
 \textbf{Definition 1 (Predicate Frequency):} Given a set $L$ of \textit{<SPO>} triples, $freq(P)$ is the number of triples in $L$ containing $P$ as a predicate.
 
-Example 2: In Example 1, we have $freq(type) = 6$ and $freq(marriedTo)\\ = 3$.
+\begin{example}
+In Example 1, we have $freq(type) = 6$ and $freq(marriedTo) = 3$.
+\end{example}
 
 \textbf{Definition 2 (Predicate-Object Frequency):} Given a set $L$ of \textit{<SPO>} triples, $freq(PO)$ is the number of triples in $L$ containing $P$ as a predicate and $O$ as an object. If $freq(PO) < MIN\_FREQ$ which is a chosen integer threshold, then $PO$ is called non-popular.
 
-Example 3: In Example 1, $freq(typePerson) = 3$ since there are three triples containing \textit{type} and \textit{person}. Similarly, $freq(married\\ToBillGates) = 1$ and $freq(bornInAmerica) = 2$, thus, if $MIN\_FREQ = 2$, then \textit{marriedToBillGates} is non-popular pair.
+Example 3: In Example 1, $freq(typePerson) = 3$ since there are three triples containing \textit{type} and \textit{person}. Similarly, $freq(marriedToBillGates) = 1$ and $freq(bornInAmerica)\\ = 2$, thus, if $MIN\_FREQ = 2$, then \textit{marriedToBillGates} is non-popular pair.
 
-\textbf{Definition 3 (Predicate-Type Frequency and Ratio):} Given a set $L$ of \textit{<SPO>} triples, $freq(PT)$ is the number of triples in $L$ containing $P$ as a predicate and $O$ as an object of type $T$. Besides, $ratio(PT) = freq(PT) / freq(P)$. $PT$ is called a noise if $ratio(PT) < NOISE\_RATIO$ which is a specified real threshold.
+\textbf{Definition 3 (Predicate-Type Frequency and Ratio):} Given a set $L$ of \textit{<SPO>} triples, $freq(PT)$ is the number of triples in $L$ containing $P$ as a predicate and $O$ as an object of type $T$. Besides, $ratio(PT) = freq(PT) / freq(P)$. $PT$ is also called non-popular if $ratio(PT) < MIN\_RATIO$ which is a specified real threshold.
 
-Example 4: In Example 1, we have $freq(marriedToSinger) = 2$, $ratio\\(marriedToMovie) = 1 / 3$ and $ratio(marriedToPerson) = 3 / 3 = 1$.
+Example 4: In Example 1, we have $freq(marriedToSinger)\\ = 2$, $ratio(marriedToMillionaire) = 1 / 3$ and $ratio(married\\ToPerson) = 3 / 3 = 1$.
 
-Observe that $ratio(marriedToMovie)$ can be very small in the real world data, and, \textit{movie} can be detected as noise for predicate \textit{marriedTo}. This observation motivates us to filter type noises based on ratio measure. That is, we take care of a predicate-type pair if its ratio is greater than a threshold $NOISE\_RATIO$, otherwise we drop it. This helps to solve the first problem mentioned in (i).
+\textbf{Definition 4 (\textit{TOP\_K} Types of a Predicate-Object Pair):} Given a predicate-object pair $PO$, $TOP\_K$ types of $PO$ is $TOP\_K$ types $T_{i}$ for which predicate-type frequency $freq(PT_{i})$ is the lowest, $PT_{i}$ is popular.
 
-\textbf{Definition 4 (\textit{TOP\_K} Types of a Predicate-Object Pair):} Given a predicate-object pair $PO$, $TOP\_K$ types of $PO$ is $TOP\_K$ types $T_{i}$ for which predicate-type frequency $freq(PT_{i})$ is the lowest, $PT_{i}$ is popular and not noise.
-
-Example 5: For instance, if $MIN\_FREQ = 2, NOISE\_\\RATIO = 2 / 3, TOP\_K = 1$ then the selected type for \textit{marriedToBritney} is \{\textit{singer}\} in Example 1.
+Example 5: For instance, if $MIN\_FREQ = 2, MIN\_\\RATIO = 2 / 3, TOP\_K = 1$ then the selected type for \textit{marriedToBritney} is \{\textit{singer}\} in Example 1.
 
 We are now ready to formally state the problem we are tackling in this work:
 
 \begin{framed}
-\textbf{Problem:} Predicate projection
+\textbf{Problem:} Predicate abstraction with $TOP\_K$
 
-\textbf{Given:} A set $L$ of \textit{<SPO>} triples, a real number $NOISE\_RATIO$, two integers $MIN\_FREQ$ and $TOP\_K$
+\textbf{Given:} A set $L$ of \textit{<SPO>} triples, a real number $MIN\_RATIO$, two integers $MIN\_FREQ$ and $TOP\_K$
 
 \textbf{Compute:} A set $R$ of unary facts $PO'(S)$ where $O' = O$ is an object such that $freq(PO) > MIN\_FREQ$, or $O' = T$ is a type such that $T$ is in $TOP\_K$ types of some predicate-object pair $PO$.
 \end{framed}
@@ -83,15 +93,15 @@ The Algorithm~\ref{algo1} which solves the presented problem, is now described i
 \item First, for each triple containing type predicate, i.e \textit{<O type T>}, a set of possible types $T$ for each object $O$ is found. In addition, $freq(PO)$ and $freq(O)$ are calculated for all triples in $L$ (line 2 - 8).
 \item After that, $freq(PT)$ is computed by enumerating all facts and types of objects in a triple.
 \item Then, we remove \textit{<SPO>} triples such that the $PO$ is non-popular (line 14 - 18). For instance, based on Definition 2 above, \textit{bornInAmerica} should be kept in the new RDF data, but \textit{marriedToBillGates} is non-popular and can be dropped.
-\item Finally, from line $19$ to $28$, the algorithm focuses on selecting types for objects based on ranking frequency of predicate-type pair. In details, for each \textit{<SPO>} triple, the algorithm computes $ratio(PT)$ with each $T$ being a type of object $O$ and stores non noise pair $PT$ into a set $TL$. After that, we find $TOP\_K$ types $T_{i}$ from $TL$ with lowest $freq(PT_{i})$. Then, the object $O$ is replaced by these $T_{i}$ and new facts are added to $R$. More specifically, if parameters are fixed as in Example 5, \textit{<Kevin marriedTo Britney>} will be replaced by \textit{marriedToSinger(Kevin)} in the output.
+\item Finally, from line $19$ to $28$, the algorithm focuses on selecting types for objects based on ranking frequency of predicate-type pair. In details, for each \textit{<SPO>} triple, the algorithm computes $ratio(PT)$ with each $T$ being a type of object $O$ and stores popular pair $PT$ into a set $TL$. After that, we find $TOP\_K$ types $T_{i}$ from $TL$ with lowest $freq(PT_{i})$. Then, the object $O$ is replaced by these $T_{i}$ and new facts are added to $R$. More specifically, if parameters are fixed as in Example 5, \textit{<Kevin marriedTo Britney>} will be replaced by \textit{marriedToSinger(Kevin)} in the output.
 \end{itemize}
 
 \begin{algorithm}
 \label{algo1}
-\caption{Predicate Projection Algorithm}
+\caption{Predicate Abstraction Algorithm with $TOP\_K$}
 
 \SetAlgoLined
-\KwData{Set $L$ of \textit{<SPO>} triples, $MIN\_FREQ,$\\$NOISE\_RATIO, TOP\_K$}
+\KwData{Set $L$ of \textit{<SPO>} triples, $MIN\_FREQ,$\\$MIN\_RATIO, TOP\_K$}
 $R$ $\leftarrow$ empty set
 
 \For{each \textit{<SPO>} triple from $L$} {
@@ -121,7 +131,7 @@ $R$ $\leftarrow$ empty set
 	\For{each type $T$ from type set of $O$} {
 		$ratio(PT) \leftarrow freq(PT) / freq(P)$
 
-		\If{$ratio(PT) > NOISE\_RATIO$} {
+		\If{$ratio(PT) > MIN\_RATIO$} {
 			add $T$ to type set $TL$
 		}
 	}
@@ -135,13 +145,13 @@ $R$ $\leftarrow$ empty set
 
 \end{algorithm}
 
-The Algorithm~\ref{algo1} assumes that the parameters are provided. Actually, the $TOP\_K$ parameter can be different for different predicates and domains while it is fixed in the main method. Thus, choosing the parameters automatically for open domain is an open problem, which needs to be further studied. In the next section, we model the predicate projection problem using ILP~\cite{ref1}.
+The Algorithm~\ref{algo1} strongly assumes that the parameters are fixed and provided. Actually, the $TOP\_K$ parameter can be different for different predicates and domains while it is fixed in the main method. Thus, choosing the parameters automatically for open domain is an open problem, which needs to be further studied. In the next section, we model the predicate abstraction problem using ILP~\cite{ref1} which does not use the assumption above.
 
-\subsection{Choosing Types with Integer Linear Programming}
+\subsection{Predicate Abstraction with Integer Linear Programming}
 
 In this proposed solution, we need one parameter $MAX\_PT$ instead of three ones mentioned above. The $MAX\_PT$ value is the maximum number of predicate-type-pairs that can be selected from RDF data. Besides, assume that we have a tree of type hierarchy $TH$ with each non-root node being subtype of its parent, e.g, $americanSinger$, $student$ are children of $singer$, $person$; respectively. In details, the solution can be described as follows.
 
-Let $h(T)$ be the height of type $T$ in $TH$, that is, the distance from node $T$ to the root of the tree. The lower value $h(T)$ is, the more general and less informative type $T$ is, e.g, \textit{person, object} are not meaningful types.
+Let $h(T)$ be the height of type $T$ in $TH$, that is, the distance from node $T$ to the root of the tree. The lower value $h(T)$ is, the more general and less informative type $T$ is, e.g, \textit{person} is not a meaningful type.
 
 Discarding subject $S$ in each triple \textit{<SPO>} of $L$, we have a set of predicate-object-pairs $(PO)_{i}$ ($i \in [m]$). Besides, a set of predicate-type-pairs $(P'T')_{j}$ ($j \in [n]$) can be created by concatenating a predicate in $L$ and a type in $TH$.
 
@@ -160,7 +170,7 @@ Formally, some variables are defined as follows.
 \begin{equation}
     x_{j} =
     \begin{cases}
-      1, & \text{if }\ P'O'_{j} \text{ is selected}\ \\
+      1, & \text{if }\ (P'T')_{j} \text{ is selected}\ \\
       0, & \text{otherwise}
     \end{cases}
 \end{equation}
@@ -171,13 +181,20 @@ We want every pair $PO_{i}$ to be covered, that is: $\sum_{j=1}^{n}{x_{j} A_{i,j
 
 From (3), (4), (5), a formal integer linear programming problem (ILP) is modeled. This can be solved by using solution for size-constrained weighted set cover problem~\cite{ref3}.
 
+Example 5: In Example 1, \textit{marriedToBillGates} is covered by \textit{marriedToMillionaire, marriedToPerson} while \textit{marriedToBritney, marriedToKaty} are covered by \textit{marriedToSinger, marriedToPerson}.
+
+Assume that in type hierarchy, $h(person) = 2, h(singer = 100), h(millionaire) = 150$. Thus, by definition, $w(married\\ToMillionaire) = 150, w(marriedToPerson) = 2, \\w(marriedToSinger) = 100$.
+
+To be easy to present, assume that we only want to cover a set of triples containing \textit{marriedTo} relation. If $MAX\_PT = 2$, then selecting \textit{marriedToMillionaire, marriedToSinger} is an optimal solution since its maximize the objective function in (5).
+
 \section{Statistics}
+\label{section3}
 
 \subsection{Frequent Itemsets}
 
-In this section we count number of frequent itemsets corresponding to different minimum supports (from $0.003 - 0.015$), two domains (IMDB and football YAGO) and three methods. The first method is to select only triples that contain \textit{type} predicate, the second one projects all facts from original data to unary forms. Also, the third one selects the output after using the current work in Section~\ref{section21} as data abstraction.
+In this section we count the number of frequent itemsets corresponding to different minimum supports (from $0.003 - 0.015$), two domains (IMDB~\footnote{\url{http://www.imdb.com/}} and football YAGO~\cite{ref4}) and three methods. The first method is to select only triples that contain \textit{type} predicate, the second one abstracts all facts from original data to unary forms. Also, the third one selects the output after using the current work in Section~\ref{section21} as data abstraction.
 
-It is shown in Table~\ref{table1} and~\ref{table2} that the number of frequent itemsets after abstraction is much larger than the first two methods. This is a result of making the RDF graph denser by abstracting data.
+It is shown in Table 1 and~\ref{table2} that the number of frequent itemsets after abstraction is much larger than those of the first two methods. This is a result of making the RDF graph denser by abstracting data.
 
 \begin{table}[ht]
 \label{table1}
@@ -352,7 +369,7 @@ Predicate Pair & Frequency\\
 \section{Future Work}
 \label{section4}
 
-There is a direction for improvement of the proposed method , that is, the mentioned problems can be resolved easier once the domain is narrowed. Indeed, since the domain is fixed, the number of predicates should not be too large, and based on experiments we can set some parameters empirically. Besides, instead of manually chosen relations such as \textit{marriedTo, bornIn}, we can mine and cluster them into different groups. Hence, suitable type projection for each group of relations can be taken into account.
+There is a direction for improvement of the proposed method, that is, the mentioned problems can be resolved easier once the domain is narrowed. Indeed, since the domain is fixed, the number of predicates should not be too large, and based on experiments we can set some parameters empirically. Besides, instead of manually chosen relations such as \textit{marriedTo, bornIn}, we can mine and cluster them into different groups. Hence, suitable type for each group of relations can be taken into account.
 
 \bibliographystyle{abbrv}
 \bibliography{sigproc}
