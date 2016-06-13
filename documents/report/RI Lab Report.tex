@@ -7,6 +7,7 @@
 \usepackage{framed}
 \usepackage[vlined,linesnumbered]{algorithm2e}
 \usepackage{amsmath}
+\usepackage{amsthm}
 
 \newcounter{example}[section]
 \newenvironment{example}[1][]{\refstepcounter{example}\par\medskip
@@ -47,7 +48,9 @@ The details of our method are described in Section~\ref{section2}. Experimental 
 
 The naive solution for abstracting binary facts to unary is to use all types of objects. That is, one could create for every fact \textit{P(S, O)} a set of facts \textit{P$T_{i}$(O)}, where \textit{$T_{i}$} is a type of $O$. However, this approach has the following problem:
 
-In Example 1, after abstracting predicates with all types and mining rules, the output can be \textit{marriedToPerson($x$) $\leftarrow$ marriedToSinger($x$)}. This is a consequence of choosing a too general level of abstraction, which generates rules that do not provide additional information to us. Despite having very high confidence, they are not informative.
+In Example 1, after abstracting predicates with all types and mining rules, among highly ranked rules we might get \textit{marriedToPerson($x$) $\leftarrow$ marriedToSinger($x$)}. Based on the type hierarchy it is known that singers are people, hence, the above rule does not provide any additional insight, i.e, not informative.
+
+%This is a consequence of choosing a too general level of abstraction, which generates rules that do not provide additional information to us. Despite having very high confidence, they are not informative.
 
 To deal with the described issue, we propose a novel abstraction method which is described in what follows.
 
